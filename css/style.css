@@ -88,7 +88,7 @@ img {
 
 .logo {
   position: relative;
-  width: clamp(96px, 30vw, 148px);
+  width: clamp(150px, 55vw, 240px);
   aspect-ratio: 83 / 47;
   flex: 0 0 auto;
 }
