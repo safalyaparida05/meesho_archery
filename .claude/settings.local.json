@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__8da8504e-2a6b-4d70-bc8b-7ac369f3a22e__get_design_context",
+      "mcp__8da8504e-2a6b-4d70-bc8b-7ac369f3a22e__download_assets",
+      "Bash(npm create *)",
+      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/63b6480e-c8ab-4af6-82bb-b7ad5743543a\" -o hero.png)",
+      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/a4aa8a27-8cf0-41ac-8cab-e4c6f220eea7\" -o logo-text.png)",
+      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/ba3b2705-eb41-407d-9b87-61cf709c9902\" -o logo-glow.png)",
+      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/fac62bb0-adf2-4269-9779-b885f475000f\" -o icon-share.png)",
+      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/25629544-02e9-4704-923e-ee31eb722595\" -o icon-back.png)",
+      "mcp__8da8504e-2a6b-4d70-bc8b-7ac369f3a22e__get_metadata",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "Bash(lsof -ti:4173)",
+      "Bash(xargs kill)",
+      "Bash(rm -rf /tmp/archery-preview)",
+      "Bash(cp -R \"/Users/safalyakumarparida/Desktop/Archery Meesho\" /tmp/archery-preview)",
+      "Read(//tmp/**)",
+      "Bash(file *.png)",
+      "Bash(curl -sI http://127.0.0.1:4174/assets/images/icon-back.svg)",
+      "Bash(rsync -a --delete \"/Users/safalyakumarparida/Desktop/Archery Meesho/\" /tmp/archery-preview/ --exclude '.claude')",
+      "Bash(mkdir -p \"/Users/safalyakumarparida/Desktop/Archery Meesho/assets/images/objects\")",
+      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/5bd12690-1667-4c1c-aa95-90564d1206ed\" -o bow.raw)",
+      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/81a098f8-997f-4161-914c-81b920086109\" -o arrow.raw)",
+      "Bash(bash -c ' *)",
+      "Bash(python3 -c \"import PIL; print\\(PIL.__version__\\)\")",
+      "Bash(pip3 install *)",
+      "Bash(python3 -c \"import PIL; print\\('PIL OK', PIL.__version__\\)\")",
+      "Bash(python3 -c ' *)",
+      "mcp__8da8504e-2a6b-4d70-bc8b-7ac369f3a22e__get_screenshot",
+      "Bash(curl -sL -o /tmp/figma_main_screen.png \"https://www.figma.com/api/mcp/asset/406a82f3-2c0b-478d-888a-5a7458c37eb2\")",
+      "Bash(ipconfig getifaddr *)",
+      "Bash(gh auth *)",
+      "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a__list_repos",
+      "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a__add_repo"
+    ]
+  }
+}

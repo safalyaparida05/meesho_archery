@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "archery-static",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["/tmp/archery-preview/serve.py"],
+      "port": 4174,
+      "autoPort": true
+    }
+  ]
+}

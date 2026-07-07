@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Meesho Archery — Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#2a0b55" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/game.css" />
+</head>
+<body>
+  <main class="screen game-screen" id="game-screen">
+    <header class="game-header">
+      <div class="app-header">
+        <button class="icon-btn" id="back-btn" aria-label="Back">
+          <img src="assets/images/icon-back.svg" alt="" />
+        </button>
+
+        <div class="logo">
+          <img class="logo__glow" src="assets/images/logo-glow.svg" alt="" />
+          <img class="logo__mark" src="assets/images/logo-text.png" alt="Meesho Archery" />
+        </div>
+
+        <button class="icon-btn" id="share-btn" aria-label="Share">
+          <img src="assets/images/icon-share.svg" alt="" />
+        </button>
+      </div>
+
+      <div class="game-stats">
+        <div class="stat">
+          <span class="stat__label">Score:</span>
+          <span class="stat__value" id="score-value">00</span>
+        </div>
+        <div class="stat">
+          <span class="stat__label">Timer:</span>
+          <span class="stat__value" id="timer-value">60s</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="conveyor" id="conveyor">
+      <div class="conveyor__track" id="conveyor-track"></div>
+    </div>
+
+    <div class="arena" id="arena">
+      <div class="arena__target"></div>
+    </div>
+
+    <div class="quiver-area">
+      <div class="bow-wrap" id="bow-wrap">
+        <img class="bow-wrap__img" src="assets/images/bow.png" alt="Bow" />
+        <div class="bow-string" id="bow-string-left"></div>
+        <div class="bow-string" id="bow-string-right"></div>
+        <button class="nocked-arrow" id="nocked-arrow" aria-label="Pull and release to shoot">
+          <img src="assets/images/arrow.png" alt="" draggable="false" />
+        </button>
+      </div>
+      <div class="quiver" id="quiver"></div>
+    </div>
+
+    <div class="flight-layer" id="flight-layer"></div>
+
+    <div class="game-over-overlay" id="game-over-overlay" hidden>
+      <div class="game-over-card">
+        <h2 id="game-over-title">Game Over</h2>
+        <p id="game-over-reason">Time's up!</p>
+        <p class="game-over-score">Final Score: <span id="final-score">0</span></p>
+        <button class="btn btn--primary" id="play-again-btn">Play Again</button>
+        <button class="link-btn" id="back-home-btn">Back to Home</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+  </main>
+
+  <script src="js/game.js"></script>
+</body>
+</html>

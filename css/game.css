@@ -1,0 +1,406 @@
+.game-screen {
+  display: flex;
+  flex-direction: column;
+  color: var(--color-white);
+  position: relative;
+  background: var(--color-bg);
+  touch-action: none;
+}
+
+/* ---------- Header ---------- */
+
+.game-header {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  background: var(--color-bg-deep);
+  position: relative;
+  z-index: 3;
+}
+
+.game-header .app-header {
+  padding-bottom: clamp(6px, 1.5vh, 10px);
+}
+
+.game-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 clamp(16px, 5vw, 28px) clamp(10px, 2.5vh, 16px);
+  font-family: "Roboto", system-ui, sans-serif;
+}
+
+.stat {
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+  font-size: clamp(11px, 3.2vw, 13px);
+  letter-spacing: 0.12px;
+  font-weight: 500;
+}
+
+.stat__label {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.stat__value {
+  color: var(--color-white);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__value.is-low {
+  color: #ff6b6b;
+}
+
+/* ---------- Conveyor belt ---------- */
+
+.conveyor {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-bg);
+  padding: clamp(8px, 1.8vh, 14px) 0;
+  flex: 0 0 auto;
+  z-index: 2;
+}
+
+.conveyor__track {
+  display: flex;
+  gap: clamp(28px, 9vw, 46px);
+  width: max-content;
+  padding: 0 10px;
+  will-change: transform;
+  transform: translateX(0);
+}
+
+.conveyor__item {
+  width: clamp(56px, 18vw, 80px);
+  height: clamp(56px, 18vw, 80px);
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  position: relative;
+}
+
+.conveyor__item img {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.conveyor__item.is-hit {
+  animation: pop-hit 0.3s ease forwards;
+}
+
+.conveyor__item.is-bomb-hit {
+  animation: bomb-hit 0.45s ease forwards;
+}
+
+@keyframes pop-hit {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes bomb-hit {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  30% {
+    transform: scale(1.4);
+    filter: brightness(2.4) saturate(0);
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+    filter: brightness(3) saturate(0);
+  }
+}
+
+/* ---------- Arena (target zone + flying arrows) ---------- */
+
+.arena {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 22dvh;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.arena__target {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 110%;
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle closest-side at center,
+    #40204c 0%,
+    #40204c 28.79%,
+    var(--color-bg) 28.79%,
+    var(--color-bg) 65.15%,
+    #320d65 65.15%,
+    #320d65 100%
+  );
+}
+
+.flight-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  overflow: visible;
+}
+
+.flying-arrow {
+  position: absolute;
+  width: clamp(14px, 4vw, 18px);
+  transform-origin: 50% 100%;
+  will-change: top, transform;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+.flying-arrow img {
+  width: 100%;
+  display: block;
+}
+
+.score-popup {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: clamp(16px, 5vw, 22px);
+  color: #ffd75e;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  animation: popup-float 0.7s ease forwards;
+  z-index: 3;
+}
+
+.score-popup.is-miss {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: clamp(13px, 4vw, 16px);
+}
+
+@keyframes popup-float {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -30%) scale(0.8);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, -70%) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -130%) scale(1);
+  }
+}
+
+/* ---------- Bow + quiver ---------- */
+
+.quiver-area {
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: clamp(4px, 1.2vh, 10px);
+  /* Only the hardware safe-area inset — no extra decorative gap — so the
+     quiver row's arrow tips end flush with the bottom of the screen. */
+  padding-bottom: var(--safe-bottom);
+  background: linear-gradient(to bottom, rgba(42, 11, 85, 0) 0%, var(--color-bg-deep) 55%, var(--color-bg-fade) 100%);
+  z-index: 2;
+}
+
+.bow-wrap {
+  position: relative;
+  width: min(82%, 320px);
+  aspect-ratio: 559 / 151;
+  touch-action: none;
+}
+
+.bow-wrap__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.nocked-arrow {
+  position: absolute;
+  left: 50%;
+  /* Bottom edge (the nock) must sit exactly on the string's resting line —
+     see STRING_ANCHOR_LEFT/RIGHT.yFrac (0.9) in game.js, i.e. 10% up from
+     the bow-wrap's bottom edge. */
+  bottom: 10%;
+  width: clamp(16px, 4.6vw, 20px);
+  transform: translate(-50%, 0);
+  transform-origin: 50% 100%;
+  cursor: grab;
+  touch-action: none;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.nocked-arrow img {
+  width: 100%;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.nocked-arrow.is-pulling {
+  cursor: grabbing;
+  transition: none;
+}
+
+.nocked-arrow.is-flying {
+  visibility: hidden;
+}
+
+.nocked-arrow:not(.is-pulling):not(.is-flying):not(.is-reloading) {
+  transition: transform 0.18s ease-out;
+}
+
+.bow-string {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 0;
+  background: linear-gradient(90deg, rgba(226, 195, 138, 0.9), rgba(255, 240, 205, 0.95));
+  border-radius: 2px;
+  transform-origin: 0 50%;
+  opacity: 1;
+  pointer-events: none;
+  will-change: transform, width;
+  z-index: 1;
+}
+
+.quiver {
+  display: flex;
+  width: 100%;
+  padding: 0 6%;
+  gap: clamp(4px, 1.6vw, 10px);
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-top: clamp(10px, 2.5vh, 18px);
+  transition: padding 0.24s ease;
+}
+
+.quiver-arrow {
+  width: clamp(11px, 3.6vw, 15px);
+  height: clamp(15px, 3.6vh, 20px);
+  flex: 0 0 auto;
+  position: relative;
+  overflow: hidden;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.quiver-arrow img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+.quiver-arrow.is-used {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+/* ---------- Game over overlay ---------- */
+
+.game-over-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(18, 3, 41, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 24px;
+}
+
+.game-over-overlay[hidden] {
+  display: none;
+}
+
+.game-over-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  width: 100%;
+  max-width: 280px;
+}
+
+.game-over-card h2 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: clamp(22px, 7vw, 28px);
+}
+
+.game-over-card p {
+  margin: 0;
+  opacity: 0.85;
+  font-size: clamp(13px, 3.6vw, 15px);
+}
+
+.game-over-score {
+  font-size: clamp(16px, 4.4vw, 19px);
+  font-weight: 600;
+  opacity: 1 !important;
+}
+
+.game-over-card .btn {
+  margin-top: 8px;
+}
+
+/* ---------- Toast ---------- */
+
+.toast {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.55);
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: clamp(14px, 4vw, 17px);
+  z-index: 8;
+  pointer-events: none;
+}
