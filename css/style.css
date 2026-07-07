@@ -88,9 +88,14 @@ img {
 
 .logo {
   position: relative;
-  width: clamp(150px, 55vw, 240px);
+  /* Layout footprint stays at the ORIGINAL size so the header row's height
+     (and everything below it) never shifts. The bigger look is applied purely
+     visually via transform below, which doesn't participate in layout/flow. */
+  width: clamp(96px, 30vw, 148px);
   aspect-ratio: 83 / 47;
   flex: 0 0 auto;
+  transform: scale(1.83);
+  transform-origin: 50% 50%;
 }
 
 .logo__glow {
