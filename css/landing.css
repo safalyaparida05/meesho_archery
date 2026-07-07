@@ -4,14 +4,21 @@
   color: var(--color-white);
 }
 
-/* ---------- Hero ---------- */
+/* ---------- Stage (hero image + actions overlap, like the Figma reference) ---------- */
 
-.hero {
+.landing-stage {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
   background: var(--color-bg-deep);
+}
+
+/* ---------- Hero ---------- */
+
+.hero {
+  position: absolute;
+  inset: 0;
 }
 
 .hero__image {
@@ -20,7 +27,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 20%;
+  object-position: 50% 15%;
 }
 
 .hero__fade-top {
@@ -33,21 +40,6 @@
   pointer-events: none;
 }
 
-.hero__fade-bottom {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 42%;
-  background: linear-gradient(
-    to bottom,
-    rgba(42, 11, 85, 0) 0%,
-    var(--color-bg-deep) 63%,
-    var(--color-bg-fade) 100%
-  );
-  pointer-events: none;
-}
-
 /* ---------- Actions ---------- */
 
 .landing-actions {
@@ -56,15 +48,23 @@
   flex-direction: column;
   align-items: center;
   gap: clamp(10px, 2.2vh, 14px);
-  padding: clamp(4px, 1.5vh, 10px) clamp(24px, 10vw, 64px) calc(var(--safe-bottom) + clamp(16px, 3vh, 24px));
-  background: var(--color-bg-fade);
-  position: relative;
+  padding: clamp(28px, 8vh, 48px) clamp(24px, 10vw, 64px) calc(var(--safe-bottom) + clamp(16px, 3vh, 24px));
+  background: linear-gradient(
+    to bottom,
+    rgba(42, 11, 85, 0) 0%,
+    var(--color-bg-deep) 45%,
+    var(--color-bg-fade) 78%
+  );
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 2;
 }
 
 /* ---------- Small-height phones: keep hero from disappearing ---------- */
 @media (max-height: 640px) {
-  .hero {
+  .landing-stage {
     min-height: 34dvh;
   }
 }
