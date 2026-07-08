@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2a0b55" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Roboto:wght@400;500;700&family=Instrument+Serif&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/game.css" />
 </head>
@@ -41,39 +41,53 @@
       </div>
     </header>
 
-    <div class="conveyor" id="conveyor">
-      <div class="conveyor__track" id="conveyor-track"></div>
-    </div>
-
-    <div class="arena" id="arena">
-      <div class="arena__target"></div>
-    </div>
-
-    <div class="quiver-area">
-      <div class="bow-wrap" id="bow-wrap">
-        <img class="bow-wrap__img" src="assets/images/bow.png" alt="Bow" />
-        <div class="bow-string" id="bow-string-left"></div>
-        <div class="bow-string" id="bow-string-right"></div>
-        <button class="nocked-arrow" id="nocked-arrow" aria-label="Pull and release to shoot">
-          <img src="assets/images/arrow.png" alt="" draggable="false" />
-        </button>
+    <div class="game-body" id="game-body">
+      <div class="conveyor" id="conveyor">
+        <div class="conveyor__track" id="conveyor-track"></div>
       </div>
-      <div class="quiver" id="quiver"></div>
-    </div>
 
-    <div class="flight-layer" id="flight-layer"></div>
-
-    <div class="game-over-overlay" id="game-over-overlay" hidden>
-      <div class="game-over-card">
-        <h2 id="game-over-title">Game Over</h2>
-        <p id="game-over-reason">Time's up!</p>
-        <p class="game-over-score">Final Score: <span id="final-score">0</span></p>
-        <button class="btn btn--primary" id="play-again-btn">Play Again</button>
-        <button class="link-btn" id="back-home-btn">Back to Home</button>
+      <div class="arena" id="arena">
+        <div class="arena__target"></div>
       </div>
-    </div>
 
-    <div class="toast" id="toast" hidden></div>
+      <div class="quiver-area">
+        <div class="bow-wrap" id="bow-wrap">
+          <img class="bow-wrap__img" src="assets/images/bow.png" alt="Bow" />
+          <div class="bow-string" id="bow-string-left"></div>
+          <div class="bow-string" id="bow-string-right"></div>
+          <button class="nocked-arrow" id="nocked-arrow" aria-label="Pull and release to shoot">
+            <img src="assets/images/arrow.png" alt="" draggable="false" />
+          </button>
+          <div class="draw-hint" id="draw-hint" aria-hidden="true" hidden>
+            <div class="draw-hint__bubble">Pull down &amp; release to shoot!</div>
+            <span class="draw-hint__finger"></span>
+          </div>
+        </div>
+        <div class="quiver" id="quiver"></div>
+      </div>
+
+      <div class="flight-layer" id="flight-layer"></div>
+
+      <div class="game-over-overlay" id="game-over-overlay" hidden>
+        <h2 class="sr-only" id="game-over-title"></h2>
+
+        <div class="game-over-content">
+          <div class="game-over-sticker" id="game-over-sticker">
+            <img id="game-over-sticker-img" src="" alt="" />
+          </div>
+          <p class="game-over-score">Your Score : <span id="final-score">0</span></p>
+          <p class="game-over-emoji" id="game-over-emoji">😔</p>
+        </div>
+
+        <div class="game-over-actions">
+          <button class="btn btn--primary" id="play-again-btn" type="button">Play Again</button>
+          <button class="btn btn--primary" id="rewards-btn" type="button">Rewards</button>
+          <button class="link-btn" id="how-to-play-btn" type="button">How to play?</button>
+        </div>
+      </div>
+
+      <div class="toast" id="toast" hidden></div>
+    </div>
   </main>
 
   <script src="js/game.js"></script>

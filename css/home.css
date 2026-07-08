@@ -143,3 +143,101 @@
   width: 100%;
   aspect-ratio: 360 / 78;
 }
+
+/* ---------- "Play & Win" nudge tooltip ---------- */
+/* A one-time, dismissible coach-mark that points down at the Play & Win nav
+   item, nudging first-time visitors toward the archery game. Anchored to
+   .bottom-nav (not .nav-item--play) since that item is exactly the 3rd of 5
+   equal-width flex children, i.e. horizontally centered in the bar already —
+   so centering the nudge on the bar centers it on the badge too. */
+
+.nav-nudge {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  /* Clear the floating Play & Win badge, not just the bar's top edge. The
+     badge is 92% of a nav-item's width (1/5 of the bar) and centered on the
+     bar's top edge, so its own top half pokes up 9.2% of the bar's width
+     above that edge (see .nav-item__badge). Margin percentages always
+     resolve against the containing block's WIDTH regardless of axis (same
+     quirk noted on .bottom-nav__row below), which conveniently matches the
+     badge's own width-based scaling — so this stays clear of the badge at
+     any viewport size. The extra few px is just breathing room for the
+     tail, kept small so the bubble reads as pointing at the icon. */
+  margin-bottom: calc(9.2% + 8px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 9px 12px 9px 16px;
+  border-radius: 999px;
+  background-image: linear-gradient(179.5deg, var(--color-btn-grad-top, #7d41ce) 1.4%, var(--color-btn-grad-bottom, #6700f1) 98.4%);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: clamp(11.5px, 3.2vw, 13px);
+  letter-spacing: 0.1px;
+  box-shadow: 0 6px 18px rgba(103, 0, 241, 0.38);
+  cursor: pointer;
+  z-index: 51;
+  animation: nav-nudge-in 0.32s ease-out both, nav-nudge-bob 1.8s ease-in-out 0.32s infinite;
+}
+
+.nav-nudge[hidden] {
+  display: none;
+}
+
+.nav-nudge__tail {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--color-btn-grad-bottom, #6700f1);
+  border-radius: 2px;
+}
+
+.nav-nudge__close {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.24);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@keyframes nav-nudge-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes nav-nudge-bob {
+  0%,
+  100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, -5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-nudge {
+    animation: nav-nudge-in 0.32s ease-out both;
+  }
+}

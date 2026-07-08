@@ -52,6 +52,20 @@
   color: #ff6b6b;
 }
 
+/* ---------- Game body (everything below the header) ---------- */
+/* Wrapping the play-area + end-game overlay in its own flex/relative
+   container means the overlay's `inset: 0` covers only this region, so the
+   live header (with the real score/timer) stays visible above the end-game
+   screens, matching the Figma end-game designs. */
+
+.game-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+
 /* ---------- Conveyor belt ---------- */
 
 .conveyor {
@@ -338,54 +352,218 @@
   pointer-events: none;
 }
 
+/* ---------- First-time "pull & release" tutorial hint ---------- */
+/* A subtle, one-time coach-mark that plays a looping pull-down-then-release
+   demo over the nocked arrow so first-time players understand the shooting
+   gesture. Shown only until the player's first real draw attempt (or a
+   short timeout), then permanently remembered via localStorage — see
+   DRAW_HINT_KEY in game.js. Entirely decorative: pointer-events are off
+   throughout so it can never steal the real drag gesture on the bow. */
+
+.draw-hint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.draw-hint[hidden] {
+  display: none;
+}
+
+.draw-hint__bubble {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 10px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background-image: linear-gradient(179.5deg, var(--color-btn-grad-top, #7d41ce) 1.4%, var(--color-btn-grad-bottom, #6700f1) 98.4%);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: clamp(11px, 3vw, 12.5px);
+  letter-spacing: 0.1px;
+  box-shadow: 0 6px 18px rgba(103, 0, 241, 0.38);
+  animation: draw-hint-bob 2.6s ease-in-out infinite;
+}
+
+/* Ghost "fingertip" that visually pulls the string down and springs back up,
+   starting from the same resting spot as the real nocked arrow (bottom:10%
+   of .bow-wrap, matching .nocked-arrow) so the demo motion lines up with it. */
+.draw-hint__finger {
+  position: absolute;
+  left: 50%;
+  bottom: 10%;
+  width: clamp(18px, 5.4vw, 22px);
+  height: clamp(18px, 5.4vw, 22px);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.35);
+  transform: translate(-50%, 0);
+  animation: draw-hint-pull 2.6s ease-in-out infinite;
+}
+
+@keyframes draw-hint-pull {
+  0%,
+  6% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 0;
+  }
+  16% {
+    opacity: 1;
+  }
+  50%,
+  62% {
+    transform: translate(-50%, 40px) scale(0.9);
+    opacity: 1;
+  }
+  78% {
+    transform: translate(-50%, -3px) scale(1.05);
+    opacity: 1;
+  }
+  92%,
+  100% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes draw-hint-bob {
+  0%,
+  45% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50%,
+  62% {
+    transform: translateX(-50%) translateY(4px);
+  }
+  78% {
+    transform: translateX(-50%) translateY(-2px);
+  }
+  92%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .draw-hint__finger,
+  .draw-hint__bubble {
+    animation: none;
+  }
+}
+
 /* ---------- Game over overlay ---------- */
+/* Themed full-bleed end-game screen (Figma nodes 70:1521, 81:1061, 81:1015,
+   81:1107) — solid game background (not a black scrim) with two soft glow
+   ellipses behind a sticker illustration + score + emoji, then two stacked
+   gradient buttons and a "How to play?" link pinned near the bottom. The
+   exact artwork/rotation/emoji per end reason is set from js/game.js. */
 
 .game-over-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(18, 3, 41, 0.94);
+  background: linear-gradient(to bottom, var(--color-bg) 0%, var(--color-bg) 60%, #3e0987 100%);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
   z-index: 10;
-  padding: 24px;
+  overflow: hidden;
+  padding: 0 24px calc(clamp(20px, 4vh, 32px) + var(--safe-bottom));
+  text-align: center;
 }
 
 .game-over-overlay[hidden] {
   display: none;
 }
 
-.game-over-card {
+.game-over-overlay::before,
+.game-over-overlay::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+
+.game-over-overlay::before {
+  top: 4%;
+  width: 132%;
+  max-width: 640px;
+  aspect-ratio: 1 / 1;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 68%);
+}
+
+.game-over-overlay::after {
+  top: 15%;
+  width: 82%;
+  max-width: 430px;
+  aspect-ratio: 1 / 1;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 68%);
+}
+
+.game-over-content {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  text-align: center;
+  gap: clamp(10px, 2.4vh, 16px);
+  margin-top: clamp(28px, 8vh, 56px);
+}
+
+.game-over-sticker {
+  width: clamp(150px, 46vw, 210px);
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-over-sticker img {
   width: 100%;
-  max-width: 280px;
-}
-
-.game-over-card h2 {
-  margin: 0;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: clamp(22px, 7vw, 28px);
-}
-
-.game-over-card p {
-  margin: 0;
-  opacity: 0.85;
-  font-size: clamp(13px, 3.6vw, 15px);
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
 }
 
 .game-over-score {
-  font-size: clamp(16px, 4.4vw, 19px);
-  font-weight: 600;
-  opacity: 1 !important;
+  margin: 0;
+  font-family: "Instrument Serif", var(--font-body), serif;
+  font-weight: 400;
+  font-size: clamp(18px, 5vw, 21px);
+  letter-spacing: 0.2px;
+  color: var(--color-white);
 }
 
-.game-over-card .btn {
-  margin-top: 8px;
+.game-over-emoji {
+  margin: 0;
+  font-family: "Instrument Serif", var(--font-body), serif;
+  font-size: clamp(32px, 9vw, 40px);
+  line-height: 1;
+}
+
+.game-over-actions {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 320px;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px, 2vh, 14px);
+  padding-top: clamp(18px, 3.4vh, 26px);
+}
+
+.game-over-actions .btn {
+  margin: 0;
 }
 
 /* ---------- Toast ---------- */

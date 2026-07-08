@@ -25,6 +25,57 @@
   const STRING_ANCHOR_LEFT = { xFrac: 0.11, yFrac: 0.9 };
   const STRING_ANCHOR_RIGHT = { xFrac: 0.89, yFrac: 0.9 };
 
+  // Best score ever reached on this device, used to trigger the "New High
+  // Score!" end-game screen (Figma node 81:1107). There is no backend, so a
+  // simple localStorage value is the whole "high score" system.
+  const HIGH_SCORE_KEY = "meeshoArcheryBestScore";
+
+  // First-time "pull & release" tutorial hint (see .draw-hint in game.css).
+  // Remembered per-device so it only ever plays until the player's first
+  // real draw attempt, never again after that.
+  const DRAW_HINT_KEY = "meeshoArcheryDrawHintSeen";
+  const DRAW_HINT_AUTO_HIDE_MS = 8000;
+
+  // Per-end-reason theming for the end-game overlay (Figma nodes 70:1521
+  // "Times Up", 81:1061 "Bomb", 81:1015 "Ran out of arrows", 81:1107 "High
+  // Score"). Sticker artwork keeps its Figma rotation/relative size; the
+  // "highscore" entry takes priority over whichever reason ended the round
+  // whenever the player's score beats their previous best (see endGame()).
+  const END_SCREENS = {
+    timer: {
+      title: "Time's Up!",
+      sticker: "assets/images/endgame-timesup.png",
+      alt: "Time's up!",
+      rotate: -8.21,
+      width: "clamp(150px, 44vw, 205px)",
+      emoji: "😔",
+    },
+    bomb: {
+      title: "Boom!",
+      sticker: "assets/images/endgame-bomb.png",
+      alt: "Boom! You hit a bomb",
+      rotate: -5.75,
+      width: "clamp(150px, 46vw, 210px)",
+      emoji: "😔",
+    },
+    arrows: {
+      title: "Out of Arrows!",
+      sticker: "assets/images/endgame-arrows.png",
+      alt: "You ran out of arrows",
+      rotate: 6.28,
+      width: "clamp(160px, 50vw, 220px)",
+      emoji: "😔",
+    },
+    highscore: {
+      title: "New High Score!",
+      sticker: "assets/images/endgame-highscore.png",
+      alt: "New high score!",
+      rotate: 0,
+      width: "clamp(150px, 46vw, 210px)",
+      emoji: "🥳",
+    },
+  };
+
   // Authoritative order from Figma node 11:122 ("List of objects")
   const OBJECT_SEQUENCE = [
     { name: "bomb", isBomb: true },
@@ -65,13 +116,17 @@
   const timerValueEl = document.getElementById("timer-value");
   const gameOverOverlay = document.getElementById("game-over-overlay");
   const gameOverTitle = document.getElementById("game-over-title");
-  const gameOverReason = document.getElementById("game-over-reason");
+  const gameOverSticker = document.getElementById("game-over-sticker");
+  const gameOverStickerImg = document.getElementById("game-over-sticker-img");
+  const gameOverEmoji = document.getElementById("game-over-emoji");
   const finalScoreEl = document.getElementById("final-score");
   const playAgainBtn = document.getElementById("play-again-btn");
-  const backHomeBtn = document.getElementById("back-home-btn");
+  const rewardsBtn = document.getElementById("rewards-btn");
+  const howToPlayBtn = document.getElementById("how-to-play-btn");
   const backBtn = document.getElementById("back-btn");
   const shareBtn = document.getElementById("share-btn");
   const toastEl = document.getElementById("toast");
+  const drawHint = document.getElementById("draw-hint");
 
   /* ---------- State ---------- */
 
@@ -87,6 +142,7 @@
   let pullDistance = 0;
   let maxPullPx = MAX_PULL_PX; // recomputed per-pull so it never exceeds on-screen space
   let uidCounter = 0;
+  let drawHintTimer = null;
 
   /* ---------- Audio (soft, synthesized SFX — no external audio files) ---------- */
   // Everything here is generated with the Web Audio API rather than sampled
@@ -516,6 +572,27 @@
     setTimeout(() => popup.remove(), 750);
   }
 
+  /* ---------- First-time draw hint ---------- */
+
+  function dismissDrawHint() {
+    if (!drawHint || drawHint.hidden) return;
+    clearTimeout(drawHintTimer);
+    drawHintTimer = null;
+    drawHint.hidden = true;
+    localStorage.setItem(DRAW_HINT_KEY, "1");
+  }
+
+  function maybeShowDrawHint() {
+    if (!drawHint) return;
+    if (localStorage.getItem(DRAW_HINT_KEY)) {
+      drawHint.hidden = true;
+      return;
+    }
+    drawHint.hidden = false;
+    clearTimeout(drawHintTimer);
+    drawHintTimer = setTimeout(dismissDrawHint, DRAW_HINT_AUTO_HIDE_MS);
+  }
+
   /* ---------- Firing mechanic ---------- */
 
   function resetNockedArrowTransform() {
@@ -549,6 +626,7 @@
 
   function onPointerDown(ev) {
     if (gameOver || isFiring || arrowsRemaining <= 0) return;
+    dismissDrawHint();
     isPulling = true;
     pullStartY = ev.clientY;
     pullDistance = 0;
@@ -711,16 +789,26 @@
     stopTimer();
     setConveyorRunning(false);
     stopDrawSound(true);
+    // Sound reflects how the round actually ended (e.g. the bomb thud),
+    // even when the score also happens to be a new high score.
     playEndGameSound(reason);
 
-    const titles = {
-      bomb: "Boom!",
-      timer: "Time's Up!",
-      arrows: "Out of Arrows!",
-    };
+    let finalReason = reason;
+    const bestScore = Number(localStorage.getItem(HIGH_SCORE_KEY) || 0);
+    if (score > 0 && score > bestScore) {
+      localStorage.setItem(HIGH_SCORE_KEY, String(score));
+      finalReason = "highscore";
+    }
 
-    gameOverTitle.textContent = titles[reason] || "Game Over";
-    gameOverReason.textContent = message || "";
+    const config = END_SCREENS[finalReason] || END_SCREENS[reason] || END_SCREENS.timer;
+
+    gameOverOverlay.dataset.reason = finalReason;
+    gameOverTitle.textContent = config.title || message || "Game Over";
+    gameOverStickerImg.src = config.sticker;
+    gameOverStickerImg.alt = config.alt || "";
+    gameOverStickerImg.style.transform = config.rotate ? `rotate(${config.rotate}deg)` : "none";
+    gameOverSticker.style.width = config.width;
+    gameOverEmoji.textContent = config.emoji;
     finalScoreEl.textContent = String(score);
     gameOverOverlay.hidden = false;
   }
@@ -751,6 +839,7 @@
     renderQuiver();
     setConveyorRunning(true);
     startTimer();
+    maybeShowDrawHint();
   }
 
   /* ---------- Wire up ---------- */
@@ -761,8 +850,12 @@
   nockedArrow.addEventListener("pointercancel", onPointerUp);
 
   playAgainBtn.addEventListener("click", resetGame);
-  backHomeBtn.addEventListener("click", () => {
-    window.location.href = "index.html";
+  rewardsBtn.addEventListener("click", () => {
+    window.location.href = "rewards.html";
+  });
+  howToPlayBtn.addEventListener("click", () => {
+    // TODO: open how-to-play modal/screen once it is built
+    console.log("How to play tapped");
   });
   backBtn.addEventListener("click", () => {
     window.location.href = "landing.html";
