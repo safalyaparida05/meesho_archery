@@ -1,0 +1,3 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 360 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path id="surface" fill-rule="evenodd" clip-rule="evenodd" d="M180 30C193.831 30 205.477 20.6398 208.947 7.9083C210.109 3.64553 213.582 0 218 0H352C356.418 0 360 3.58172 360 8V48C360 52.4183 356.418 56 352 56H8C3.58172 56 0 52.4183 0 48V8C0 3.58172 3.58172 0 8 0H142C146.418 0 149.891 3.64554 151.053 7.90831C154.523 20.6398 166.169 30 180 30Z" fill="var(--fill-0, white)"/>
+</svg>

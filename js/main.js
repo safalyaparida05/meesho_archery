@@ -13,7 +13,7 @@ document.getElementById("how-to-play-btn").addEventListener("click", () => {
 });
 
 document.getElementById("back-btn").addEventListener("click", () => {
-  console.log("Back tapped");
+  window.location.href = "home.html";
 });
 
 document.getElementById("share-btn").addEventListener("click", async () => {

@@ -1,0 +1,145 @@
+/* ---------- Homepage screen (mostly image-based, kept responsive) ---------- */
+
+.home-screen {
+  overflow: visible;
+  min-height: auto;
+  background: #ffffff;
+  color: #1c1c26;
+}
+
+.home-content {
+  display: block;
+  width: 100%;
+}
+
+.home-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.home-block {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+}
+
+/* Invisible tap target laid over the "Meesho Archery" daily-progress widget
+   baked into the header image. Box is tuned to the widget's card row so the
+   whole card (across the horizontal scroll strip) is tappable. */
+.widget-hotspot {
+  position: absolute;
+  left: 4.4%;
+  top: 58.3%;
+  width: 91.2%;
+  height: 32.9%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 14px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.widget-hotspot:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- Bottom navigation ---------- */
+
+.bottom-nav {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 560px;
+  aspect-ratio: 360 / 56;
+  z-index: 50;
+}
+
+.bottom-nav__surface {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3)) drop-shadow(0px 1px 21px rgba(0, 0, 0, 0.1));
+}
+
+.bottom-nav__row {
+  /* NOTE: use top/bottom (not padding-bottom) to reserve space at the base of
+     the bar. Percentage padding/margin on the vertical axis always resolves
+     against the containing block's WIDTH per spec, which is wrong here since
+     this box is short and wide — top/bottom offsets on an absolutely
+     positioned element correctly resolve against the container's HEIGHT. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 14%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.nav-item {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5%;
+  color: #8b8b9a;
+  font-size: clamp(8.5px, 2.55vw, 10.5px);
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  transition: opacity 0.12s ease;
+}
+
+.nav-item:active {
+  opacity: 0.6;
+}
+
+.nav-item svg {
+  width: clamp(19px, 6.1vw, 24px);
+  height: auto;
+  flex: 0 0 auto;
+}
+
+.nav-item--active {
+  color: #6700f1;
+}
+
+/* Center "Play & Win" slot: this item stretches to the row's full cross-axis
+   size (instead of shrinking to its content, like its siblings) so its top
+   edge lines up with the nav bar's top edge. The circular badge is then
+   absolutely positioned at that top edge and floats above the bar, matching
+   the Figma design where the badge nests into the surface's notch cutout. */
+.nav-item--play {
+  align-self: stretch;
+  justify-content: flex-end;
+  position: relative;
+  font-weight: 600;
+}
+
+.nav-item__badge {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 92%; /* 92% of this item's width (1/5 of bar) ≈ 18.4% of full bar width */
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.nav-item__badge img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.home-nav-spacer {
+  width: 100%;
+  aspect-ratio: 360 / 78;
+}

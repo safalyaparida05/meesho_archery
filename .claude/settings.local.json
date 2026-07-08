@@ -33,7 +33,27 @@
       "Bash(ipconfig getifaddr *)",
       "Bash(gh auth *)",
       "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a__list_repos",
-      "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a__add_repo"
+      "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a__add_repo",
+      "Bash(rsync -a --exclude='.git' --exclude='.claude' \"/Users/safalyakumarparida/Desktop/Archery Meesho/\" /tmp/archery-preview/)",
+      "Bash(mkdir -p /tmp/figma_home)",
+      "Bash(curl -sL -o home_screenshot.png \"https://www.figma.com/api/mcp/asset/b41edeba-d782-4ad2-8677-32414d6b0f7b\")",
+      "Bash(curl -sL -o header_img1.png \"https://www.figma.com/api/mcp/asset/8af68b20-4db3-4788-9de8-320f2824630b\")",
+      "Bash(curl -sL -o cat_raw.png \"https://www.figma.com/api/mcp/asset/58543d8b-6f0b-4300-9274-804c3dcfc75e\")",
+      "Bash(curl -sL -o filters_raw.png \"https://www.figma.com/api/mcp/asset/4bfb8efd-3e7e-4fae-83fa-04959f34d114\")",
+      "Bash(curl -sL -o products_raw.png \"https://www.figma.com/api/mcp/asset/f29a365a-a933-40c4-bcf5-f710ad3eec38\")",
+      "Bash(curl -sL -o icon_home1.png \"https://www.figma.com/api/mcp/asset/0eaacd99-8f2e-4da2-872a-a4d5e29714ea\")",
+      "Bash(curl -sL -o icon_home2.png \"https://www.figma.com/api/mcp/asset/f790d6b2-d1b0-45ff-9ed1-ea58975b6187\")",
+      "Bash(curl -sL -o icon_categories.png \"https://www.figma.com/api/mcp/asset/57211092-d05c-4a46-937b-e77df8c407de\")",
+      "Bash(curl -sL -o icon_live.png \"https://www.figma.com/api/mcp/asset/b1ce1e49-c98e-4c7c-ac74-c629a253e2a6\")",
+      "Bash(curl -sL -o icon_orders.png \"https://www.figma.com/api/mcp/asset/5f0bedd0-93ec-4f1d-bb19-45e6e66e9f7f\")",
+      "Bash(curl -s \"http://localhost:4174/js/main.js\")",
+      "Bash(curl -sI http://localhost:4174/index.html)",
+      "Bash(rsync -a --exclude='.git' \"/Users/safalyakumarparida/Desktop/Archery Meesho/\" /tmp/archery-preview/)",
+      "Bash(curl -sI http://localhost:4174/js/main.js)",
+      "Bash(lsof -iTCP:8000 -sTCP:LISTEN)",
+      "Bash(nohup python3 -c ' *)",
+      "Bash(disown)",
+      "Bash(curl -sI http://localhost:8000/index.html)"
     ]
   }
 }
