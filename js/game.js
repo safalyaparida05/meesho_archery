@@ -88,6 +88,227 @@
   let maxPullPx = MAX_PULL_PX; // recomputed per-pull so it never exceeds on-screen space
   let uidCounter = 0;
 
+  /* ---------- Audio (soft, synthesized SFX — no external audio files) ---------- */
+  // Everything here is generated with the Web Audio API rather than sampled
+  // files, kept deliberately quiet and lowpass-filtered so it reads as a
+  // gentle accent rather than an arcade "beep". Sounds only ever start from
+  // a real user gesture (pointerdown), so autoplay restrictions never block
+  // them.
+
+  let audioCtx = null;
+  let masterGain = null;
+  let drawOsc = null;
+  let drawGain = null;
+
+  function ensureAudioContext() {
+    if (audioCtx) return audioCtx;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    audioCtx = new Ctx();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.6;
+    masterGain.connect(audioCtx.destination);
+    return audioCtx;
+  }
+
+  function resumeAudioContext() {
+    const ctx = ensureAudioContext();
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+    return ctx;
+  }
+
+  // Soft continuous tone while the string is being drawn — pitch rises very
+  // gently with how far it's pulled, like a light creak of tension.
+  function startDrawSound() {
+    const ctx = resumeAudioContext();
+    if (!ctx) return;
+    stopDrawSound(true);
+
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = 170;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 800;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+
+    const now = ctx.currentTime;
+    gain.gain.linearRampToValueAtTime(0.045, now + 0.09);
+    osc.start(now);
+
+    drawOsc = osc;
+    drawGain = gain;
+  }
+
+  function updateDrawSound(pullFraction) {
+    if (!drawOsc || !drawGain || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    const clamped = Math.max(0, Math.min(1, pullFraction));
+    drawOsc.frequency.setTargetAtTime(170 + clamped * 130, now, 0.05);
+    drawGain.gain.setTargetAtTime(0.04 + clamped * 0.03, now, 0.05);
+  }
+
+  function stopDrawSound(immediate) {
+    if (!drawOsc || !drawGain || !audioCtx) return;
+    const osc = drawOsc;
+    const gain = drawGain;
+    drawOsc = null;
+    drawGain = null;
+    const now = audioCtx.currentTime;
+    const releaseTime = immediate ? 0.03 : 0.09;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(gain.gain.value, now);
+    gain.gain.linearRampToValueAtTime(0, now + releaseTime);
+    osc.stop(now + releaseTime + 0.02);
+  }
+
+  // Short, rounded "twang" plus a breath of filtered noise for the arrow
+  // leaving the string — quick but soft, no harsh attack.
+  function playReleaseSound(power) {
+    const ctx = resumeAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const charge = Math.max(0, Math.min(1, power));
+
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    const startFreq = 300 + charge * 110;
+    osc.frequency.setValueAtTime(startFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(70, startFreq * 0.35), now + 0.22);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 1300;
+
+    const gain = ctx.createGain();
+    const peak = 0.08 + charge * 0.04;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(peak, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+    osc.start(now);
+    osc.stop(now + 0.32);
+
+    const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * 0.22));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = "bandpass";
+    noiseFilter.frequency.value = 1100;
+    noiseFilter.Q.value = 0.6;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.03, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(masterGain);
+    noise.start(now);
+  }
+
+  // Tiny, muted "tick" for the next arrow settling onto the string.
+  function playLoadSound() {
+    const ctx = resumeAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(500, now);
+    osc.frequency.exponentialRampToValueAtTime(350, now + 0.08);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 1600;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.04, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+    osc.start(now);
+    osc.stop(now + 0.13);
+  }
+
+  // Round-ending cue. A bomb hit gets a soft, muffled low thud (a gentle
+  // "that's over" rather than a harsh buzzer); running out of time/arrows
+  // gets a warm three-note chime — rounded sine tones with a slow, staggered
+  // fade-in so it reads as a soothing "round complete" rather than an
+  // arcade fanfare.
+  function playEndGameSound(reason) {
+    const ctx = resumeAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+
+    if (reason === "bomb") {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.exponentialRampToValueAtTime(48, now + 0.42);
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 380;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.11, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      osc.start(now);
+      osc.stop(now + 0.65);
+      return;
+    }
+
+    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 — soft resolving major triad
+    notes.forEach((freq, i) => {
+      const start = now + i * 0.1;
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 2200;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.065, start + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.75);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      osc.start(start);
+      osc.stop(start + 0.8);
+    });
+  }
+
   /* ---------- Conveyor ---------- */
 
   let beltOffset = 0;
@@ -308,6 +529,7 @@
     nockedArrow.style.transition = "none";
     nockedArrow.style.transform = `translate(-50%, ${RELOAD_DROP_PX}px)`;
     nockedArrow.classList.add("is-reloading");
+    playLoadSound();
     // Force reflow so the start position above is committed before we
     // animate away from it.
     // eslint-disable-next-line no-unused-expressions
@@ -343,6 +565,7 @@
 
     nockedArrow.classList.add("is-pulling");
     nockedArrow.setPointerCapture(ev.pointerId);
+    startDrawSound();
   }
 
   function onPointerMove(ev) {
@@ -350,12 +573,14 @@
     const delta = Math.max(0, Math.min(maxPullPx, ev.clientY - pullStartY));
     pullDistance = delta;
     nockedArrow.style.transform = `translate(-50%, ${delta}px)`;
+    updateDrawSound(maxPullPx > 0 ? delta / maxPullPx : 0);
   }
 
   function onPointerUp(ev) {
     if (!isPulling) return;
     isPulling = false;
     nockedArrow.classList.remove("is-pulling");
+    stopDrawSound(false);
 
     if (pullDistance < MIN_PULL_PX) {
       // Not enough pull to count as a shot — snap back.
@@ -373,6 +598,7 @@
     if (gameOver || isFiring) return;
     isFiring = true;
     arrowsRemaining -= 1;
+    playReleaseSound(power);
 
     // Measure the real flight path — from the arrow's resting tip, straight
     // up past the conveyor's objects — before it visually flies off.
@@ -484,6 +710,8 @@
     gameOver = true;
     stopTimer();
     setConveyorRunning(false);
+    stopDrawSound(true);
+    playEndGameSound(reason);
 
     const titles = {
       bomb: "Boom!",
@@ -505,6 +733,7 @@
     isPulling = false;
     isFiring = false;
     pullDistance = 0;
+    stopDrawSound(true);
 
     updateScoreDisplay();
     updateTimerDisplay();
