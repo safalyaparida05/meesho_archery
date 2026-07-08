@@ -53,7 +53,30 @@
       "Bash(lsof -iTCP:8000 -sTCP:LISTEN)",
       "Bash(nohup python3 -c ' *)",
       "Bash(disown)",
-      "Bash(curl -sI http://localhost:8000/index.html)"
+      "Bash(curl -sI http://localhost:8000/index.html)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh api *)",
+      "Bash(curl -s https://api.github.com/repos/safalyaparida05/meesho_archery)",
+      "Bash(curl -s https://api.github.com/repos/safalyaparida05/meesho_archery/pages)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://safalyaparida05.github.io/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://safalyaparida05.github.io/meesho_archery/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://safalyaparida05.github.io/meesho_archery/home.html)",
+      "Bash(curl -s https://safalyaparida05.github.io/meesho_archery/home.html)",
+      "Bash(curl -s https://safalyaparida05.github.io/meesho_archery/index.html)",
+      "Bash(curl -s https://safalyaparida05.github.io/meesho_archery/)",
+      "Bash(grep -rln \"index.html\\\\|home.html\" . --include=\"*.json\" --include=\"*.md\" --include=\"*.yml\" --include=\"*.yaml\")",
+      "Bash(grep -rn \"index\\\\.html\\\\|home\\\\.html\" . --exclude-dir=.git)",
+      "Bash(git mv *)",
+      "Bash(git add *)",
+      "Bash(curl -sL -o /tmp/rewards_screenshot.png \"https://www.figma.com/api/mcp/asset/bfba1bfb-8d26-4ee7-8a72-9e810a749772\")",
+      "Bash(curl -sL -o /tmp/rewards_card.png \"https://www.figma.com/api/mcp/asset/456df2e9-84f5-446c-8d86-4c612c75fc9d\")",
+      "Bash(curl -sL -o /tmp/rewards_bow_icon.png \"https://www.figma.com/api/mcp/asset/af7448ee-3455-4fb2-8d00-aa3032505e6d\")",
+      "Bash(curl -sI http://localhost:8000/rewards.html)",
+      "Bash(curl -s http://localhost:8000/rewards.html)",
+      "Bash(rsync -a --delete --exclude 'serve.py' \"/Users/safalyakumarparida/Desktop/Archery Meesho/\" /tmp/archery-preview/)",
+      "Bash(lsof -tiTCP:8000 -sTCP:LISTEN)",
+      "Bash(curl -sL -o /tmp/rewards_bow_icon_v2.png \"https://www.figma.com/api/mcp/asset/8c5e97da-522e-4acb-bfd8-99ad4aa24b3e\")"
     ]
   }
 }

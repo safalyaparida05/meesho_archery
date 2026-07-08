@@ -3,8 +3,7 @@ document.getElementById("start-game-btn").addEventListener("click", () => {
 });
 
 document.getElementById("rewards-btn").addEventListener("click", () => {
-  // TODO: navigate to rewards screen once it is built
-  console.log("Rewards tapped");
+  window.location.href = "rewards.html";
 });
 
 document.getElementById("how-to-play-btn").addEventListener("click", () => {

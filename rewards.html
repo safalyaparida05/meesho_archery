@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Meesho Archery - Rewards</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2a0b55" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Oswald:wght@500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/rewards.css" />
+</head>
+<body>
+  <main class="screen rewards-screen" id="rewards-screen">
+    <header class="app-header">
+      <button class="icon-btn" id="back-btn" aria-label="Back">
+        <img src="assets/images/icon-back.svg" alt="" />
+      </button>
+
+      <div class="logo">
+        <img class="logo__glow" src="assets/images/logo-glow.svg" alt="" />
+        <img class="logo__mark" src="assets/images/logo-text.png" alt="Meesho Archery" />
+      </div>
+
+      <button class="icon-btn" id="share-btn" aria-label="Share">
+        <img src="assets/images/icon-share.svg" alt="" />
+      </button>
+    </header>
+
+    <div class="rewards-hero">
+      <div class="rewards-hero__icon">
+        <img src="assets/images/rewards-bow-icon.png" alt="Bow and arrow" />
+      </div>
+      <p class="rewards-hero__tagline">Play and win exciting prizes</p>
+    </div>
+
+    <div class="rewards-card">
+      <ul class="tier-list">
+        <li class="tier tier--current">
+          <div class="tier__marker">
+            <span class="tier__circle">1</span>
+            <span class="tier__line"></span>
+          </div>
+          <div class="tier__body">
+            <div class="tier__row">
+              <div class="tier__text">
+                <h3 class="tier__title">Unlock at 50 points</h3>
+                <p class="tier__desc">Get a chance to win Meesho goodies</p>
+              </div>
+              <span class="lock-badge lock-badge--square" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M6 10V7a6 6 0 1 1 12 0v3" stroke="#5b5b6e" stroke-width="2" stroke-linecap="round" />
+                  <rect x="4" y="10" width="16" height="11" rx="3" fill="#5b5b6e" />
+                  <circle cx="12" cy="15" r="1.6" fill="#fff" />
+                  <rect x="11.2" y="15.4" width="1.6" height="3" fill="#fff" />
+                </svg>
+              </span>
+            </div>
+            <div class="tier__progress">
+              <span class="tier__progress-label">0 / 50 POINTS</span>
+              <div class="tier__progress-track">
+                <div class="tier__progress-fill"></div>
+              </div>
+            </div>
+          </div>
+        </li>
+
+        <li class="tier">
+          <div class="tier__marker">
+            <span class="tier__circle">2</span>
+            <span class="tier__line"></span>
+          </div>
+          <div class="tier__body">
+            <div class="tier__row">
+              <div class="tier__text">
+                <h3 class="tier__title">Unlock at 250 points</h3>
+                <p class="tier__desc">Get a chance to win watch, headphone and exciting gift</p>
+              </div>
+              <span class="lock-badge lock-badge--diamond" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M6 10V7a6 6 0 1 1 12 0v3" stroke="#5b5b6e" stroke-width="2" stroke-linecap="round" />
+                  <rect x="4" y="10" width="16" height="11" rx="3" fill="#5b5b6e" />
+                  <circle cx="12" cy="15" r="1.6" fill="#fff" />
+                  <rect x="11.2" y="15.4" width="1.6" height="3" fill="#fff" />
+                </svg>
+              </span>
+            </div>
+          </div>
+        </li>
+
+        <li class="tier tier--last">
+          <div class="tier__marker">
+            <span class="tier__circle">3</span>
+          </div>
+          <div class="tier__body">
+            <div class="tier__row">
+              <div class="tier__text">
+                <h3 class="tier__title">Unlock at 600 points</h3>
+                <p class="tier__desc">Get a chance to win a brand new car</p>
+              </div>
+              <span class="lock-badge lock-badge--hex" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M6 10V7a6 6 0 1 1 12 0v3" stroke="#5b5b6e" stroke-width="2" stroke-linecap="round" />
+                  <rect x="4" y="10" width="16" height="11" rx="3" fill="#5b5b6e" />
+                  <circle cx="12" cy="15" r="1.6" fill="#fff" />
+                  <rect x="11.2" y="15.4" width="1.6" height="3" fill="#fff" />
+                </svg>
+              </span>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </main>
+
+  <script src="js/rewards.js"></script>
+</body>
+</html>
