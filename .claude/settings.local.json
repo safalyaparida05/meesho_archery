@@ -76,7 +76,8 @@
       "Bash(curl -s http://localhost:8000/rewards.html)",
       "Bash(rsync -a --delete --exclude 'serve.py' \"/Users/safalyakumarparida/Desktop/Archery Meesho/\" /tmp/archery-preview/)",
       "Bash(lsof -tiTCP:8000 -sTCP:LISTEN)",
-      "Bash(curl -sL -o /tmp/rewards_bow_icon_v2.png \"https://www.figma.com/api/mcp/asset/8c5e97da-522e-4acb-bfd8-99ad4aa24b3e\")"
+      "Bash(curl -sL -o /tmp/rewards_bow_icon_v2.png \"https://www.figma.com/api/mcp/asset/8c5e97da-522e-4acb-bfd8-99ad4aa24b3e\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://safalyaparida05.github.io/meesho_archery/rewards.html)"
     ]
   }
 }
