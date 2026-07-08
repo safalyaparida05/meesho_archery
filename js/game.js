@@ -765,7 +765,7 @@
     window.location.href = "index.html";
   });
   backBtn.addEventListener("click", () => {
-    window.location.href = "index.html";
+    window.location.href = "landing.html";
   });
 
   shareBtn.addEventListener("click", async () => {

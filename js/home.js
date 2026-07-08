@@ -2,7 +2,7 @@
   "use strict";
 
   function goToArcheryGame() {
-    window.location.href = "index.html";
+    window.location.href = "landing.html";
   }
 
   var widgetHotspot = document.getElementById("widget-hotspot");
