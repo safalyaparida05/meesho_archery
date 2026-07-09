@@ -138,7 +138,6 @@ import { incrementPlayerStats } from "./firebase-init.js";
   const playAgainBtn = document.getElementById("play-again-btn");
   const leaderboardBtn = document.getElementById("leaderboard-btn");
   const rewardsBtn = document.getElementById("rewards-btn");
-  const howToPlayBtn = document.getElementById("how-to-play-btn");
   const backBtn = document.getElementById("back-btn");
   const shareBtn = document.getElementById("share-btn");
   const toastEl = document.getElementById("toast");
@@ -890,10 +889,6 @@ import { incrementPlayerStats } from "./firebase-init.js";
   });
   rewardsBtn.addEventListener("click", () => {
     window.location.href = "rewards.html";
-  });
-  howToPlayBtn.addEventListener("click", () => {
-    // TODO: open how-to-play modal/screen once it is built
-    console.log("How to play tapped");
   });
   backBtn.addEventListener("click", () => {
     window.location.href = "landing.html";

@@ -2,13 +2,12 @@ document.getElementById("start-game-btn").addEventListener("click", () => {
   window.location.href = "game.html";
 });
 
-document.getElementById("rewards-btn").addEventListener("click", () => {
-  window.location.href = "rewards.html";
+document.getElementById("leaderboard-btn").addEventListener("click", () => {
+  window.location.href = "leaderboard.html";
 });
 
-document.getElementById("how-to-play-btn").addEventListener("click", () => {
-  // TODO: open how-to-play modal/screen once it is built
-  console.log("How to play tapped");
+document.getElementById("rewards-btn").addEventListener("click", () => {
+  window.location.href = "rewards.html";
 });
 
 document.getElementById("back-btn").addEventListener("click", () => {
