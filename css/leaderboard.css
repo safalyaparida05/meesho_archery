@@ -129,7 +129,10 @@
 .lb-columns {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 18px clamp(18px, 5vw, 22px) 1fr clamp(44px, 12vw, 56px) clamp(36px, 10vw, 44px);
+  /* Time column is wider than a plain "62s" would need — once a run passes
+     60s it renders as "1m 02s" (see formatTime() in js/leaderboard.js),
+     which needs more horizontal room than the old 36-44px slot gave it. */
+  grid-template-columns: 18px clamp(18px, 5vw, 22px) 1fr clamp(44px, 12vw, 56px) clamp(46px, 13vw, 60px);
   gap: clamp(6px, 2vw, 8px);
   font-family: var(--font-display-condensed);
   /* Same reasoning as .leaderboard-hero__score — keep this at the font's
@@ -172,7 +175,7 @@
 
 .lb-row {
   display: grid;
-  grid-template-columns: 18px clamp(18px, 5vw, 22px) 1fr clamp(44px, 12vw, 56px) clamp(36px, 10vw, 44px);
+  grid-template-columns: 18px clamp(18px, 5vw, 22px) 1fr clamp(44px, 12vw, 56px) clamp(46px, 13vw, 60px);
   gap: clamp(6px, 2vw, 8px);
   align-items: center;
 }

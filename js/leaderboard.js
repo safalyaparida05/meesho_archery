@@ -114,6 +114,14 @@ function rankBadgeMarkup(index) {
   return `<span class="lb-row__rank lb-row__rank--num">${index + 1}.</span>`;
 }
 
+function formatTime(totalSeconds) {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}m ${String(secs).padStart(2, "0")}s`;
+}
+
 function buildRowEl({ name, score, time, avatar, isMe }, index) {
   const li = document.createElement("li");
   li.className = "lb-row" + (isMe ? " lb-row--me" : "");
@@ -122,7 +130,7 @@ function buildRowEl({ name, score, time, avatar, isMe }, index) {
     <img class="lb-row__avatar" src="${avatar}" alt="" />
     <span class="lb-row__name">${escapeHtml(name)}</span>
     <span class="lb-row__score">${score}</span>
-    <span class="lb-row__time">${time}s</span>
+    <span class="lb-row__time">${formatTime(time)}</span>
   `;
   return li;
 }
