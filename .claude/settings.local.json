@@ -77,7 +77,25 @@
       "Bash(rsync -a --delete --exclude 'serve.py' \"/Users/safalyakumarparida/Desktop/Archery Meesho/\" /tmp/archery-preview/)",
       "Bash(lsof -tiTCP:8000 -sTCP:LISTEN)",
       "Bash(curl -sL -o /tmp/rewards_bow_icon_v2.png \"https://www.figma.com/api/mcp/asset/8c5e97da-522e-4acb-bfd8-99ad4aa24b3e\")",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://safalyaparida05.github.io/meesho_archery/rewards.html)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://safalyaparida05.github.io/meesho_archery/rewards.html)",
+      "Bash(curl -s https://safalyaparida05.github.io/meesho_archery/rewards.html)",
+      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/478bbe34-0cef-4a8f-bffa-3dc766a446c0\" -o endgame-bomb-raw.png)",
+      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/9d6b8090-f903-466b-96ac-936a257d0e6d\" -o endgame-arrows-raw.png)",
+      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/601cf2fa-1a29-45f0-9f0b-5cbf9fc5b0f4\" -o endgame-highscore-raw.png)",
+      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/532cdc28-32ce-4158-8865-2d64a830d309\" -o endgame-timesup-raw.png)",
+      "Bash(python3 -)",
+      "Bash(curl -s -o /dev/null -w \"index.html: %{http_code}\\\\n\" https://safalyaparida05.github.io/meesho_archery/index.html)",
+      "Bash(curl -s -o /dev/null -w \"game.html: %{http_code}\\\\n\" https://safalyaparida05.github.io/meesho_archery/game.html)",
+      "Bash(curl -s -o /dev/null -w \"landing.html: %{http_code}\\\\n\" https://safalyaparida05.github.io/meesho_archery/landing.html)",
+      "Bash(curl -s -o /dev/null -w \"css/home.css: %{http_code}\\\\n\" https://safalyaparida05.github.io/meesho_archery/css/home.css)",
+      "Bash(curl -s -o /dev/null -w \"css/game.css: %{http_code}\\\\n\" https://safalyaparida05.github.io/meesho_archery/css/game.css)",
+      "Bash(mkdir -p /tmp/figma-lb)",
+      "Bash(curl -sL -o gate.png \"https://www.figma.com/api/mcp/asset/568dd68f-31d0-4ed9-b9b8-b7afcf2ab9e7\")",
+      "Bash(curl -sL -o form.png \"https://www.figma.com/api/mcp/asset/6bf19ecf-a6fa-4168-9c72-12b3f9023405\")",
+      "Bash(curl -sL -o leaderboard.png \"https://www.figma.com/api/mcp/asset/4c7219b7-e9ae-4f76-8b5a-c30f8252ab67\")",
+      "Bash(fc-match \"Futura Condensed Medium\")",
+      "Bash(fc-match \"Futura\")",
+      "Bash(fc-list)"
     ]
   }
 }

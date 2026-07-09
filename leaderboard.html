@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Meesho Archery - Leaderboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2a0b55" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/leaderboard.css" />
+</head>
+<body>
+  <main class="screen leaderboard-screen" id="leaderboard-screen">
+    <header class="app-header">
+      <button class="icon-btn" id="back-btn" aria-label="Back">
+        <img src="assets/images/icon-back.svg" alt="" />
+      </button>
+
+      <div class="logo">
+        <img class="logo__glow" src="assets/images/logo-glow.svg" alt="" />
+        <img class="logo__mark" src="assets/images/logo-text.png" alt="Meesho Archery" />
+      </div>
+
+      <button class="icon-btn" id="share-btn" aria-label="Share">
+        <img src="assets/images/icon-share.svg" alt="" />
+      </button>
+    </header>
+
+    <div class="leaderboard-hero">
+      <p class="leaderboard-hero__label">Leaderboard</p>
+      <p class="leaderboard-hero__score">Your Total Score : <span id="total-score">0</span></p>
+    </div>
+
+    <div class="leaderboard-stack" id="leaderboard-stack">
+      <div class="leaderboard-card" id="leaderboard-card">
+        <div class="lb-columns" aria-hidden="true">
+          <span class="lb-columns__name">Name</span>
+          <span class="lb-columns__score">Score</span>
+          <span class="lb-columns__time">Time</span>
+        </div>
+        <div class="lb-divider"></div>
+
+        <div class="lb-rows-wrap" id="lb-rows-wrap">
+          <ul class="lb-rows" id="lb-rows"></ul>
+          <div class="lb-blur-overlay" id="lb-blur-overlay" hidden></div>
+          <div class="lb-lock-pill" id="lb-lock-pill" hidden>
+            <span class="lb-lock-pill__icon">
+              <img src="assets/images/leaderboard/icon-lock.svg" alt="" />
+            </span>
+            <span class="lb-lock-pill__text">Enter Details To Unlock Ranking</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sits on top of the leaderboard card and fades it into the page's
+           purple background — see Figma node 89:1577 "Gradient". -->
+      <div class="leaderboard-fade" id="leaderboard-fade" hidden></div>
+
+      <!-- Floats on top of the fade, inset further than the card itself so a
+           sliver of the faded card peeks around its edges (Figma node
+           89:1613 "Name Details"). -->
+      <div class="name-details-card" id="name-details-card" hidden>
+        <label class="name-details__label" for="name-input">Name</label>
+        <input class="name-details__input" id="name-input" type="text" placeholder="Enter your name" maxlength="24" autocomplete="off" />
+
+        <p class="name-details__label name-details__label--gender">Gender</p>
+        <div class="gender-chips">
+          <button class="gender-chip" id="gender-male" type="button" data-gender="male">
+            <span class="gender-chip__text">Male</span>
+            <span class="gender-chip__tick" hidden><img src="assets/images/leaderboard/icon-tick.svg" alt="" /></span>
+          </button>
+          <button class="gender-chip" id="gender-female" type="button" data-gender="female">
+            <span class="gender-chip__text">Female</span>
+            <span class="gender-chip__tick" hidden><img src="assets/images/leaderboard/icon-tick.svg" alt="" /></span>
+          </button>
+          <button class="gender-chip" id="gender-unspecified" type="button" data-gender="unspecified">
+            <span class="gender-chip__text">Don&rsquo;t wish</span>
+            <span class="gender-chip__tick" hidden><img src="assets/images/leaderboard/icon-tick.svg" alt="" /></span>
+          </button>
+        </div>
+
+        <button class="btn btn--primary name-details__save" id="save-profile-btn" type="button">Save</button>
+        <p class="name-details__error" id="name-details-error" hidden></p>
+      </div>
+
+      <!-- Floats on top of the fade, overlapping the card's own bottom
+           portion rather than sitting below it in normal flow (Figma node
+           84:1452 "Play Again Button" inside the unlocked leaderboard,
+           83:1347). -->
+      <div class="leaderboard-unlocked-actions" id="leaderboard-unlocked-actions" hidden>
+        <button class="btn btn--primary" id="play-again-lb-btn" type="button">Play Again</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+  </main>
+
+  <script type="module" src="js/leaderboard.js"></script>
+</body>
+</html>

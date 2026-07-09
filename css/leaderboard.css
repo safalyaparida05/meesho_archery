@@ -1,0 +1,486 @@
+.leaderboard-screen {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: clamp(28px, 6vh, 44px);
+}
+
+/* ---------- Hero (label + total score) ---------- */
+
+.leaderboard-hero {
+  padding: clamp(14px, 3vh, 22px) clamp(20px, 6vw, 28px) 0;
+}
+
+.leaderboard-hero__label {
+  margin: 0;
+  font-family: var(--font-display-condensed);
+  font-weight: 500;
+  font-size: clamp(16px, 4.8vw, 20px);
+  letter-spacing: 0.24px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.leaderboard-hero__score {
+  margin: clamp(4px, 1.2vh, 8px) 0 0;
+  font-family: var(--font-display-condensed);
+  /* "Futura Condensed Medium" is a single static-weight font face — asking
+     for font-weight:600 on it (rather than its native ~500 "Medium")
+     forces the browser to synthesize a bolder version wherever the real
+     Futura is actually installed (macOS/iOS), which reads as a distorted,
+     unexpectedly chunky face instead of the clean look Figma shows. 500
+     matches the face's own built-in weight so no synthetic bolding
+     kicks in, while still rendering appropriately bold on the Oswald/
+     Poppins fallback used everywhere else. */
+  font-weight: 500;
+  font-size: clamp(20px, 6vw, 26px);
+  letter-spacing: 0.3px;
+  color: var(--color-white);
+}
+
+/* ---------- Leaderboard card ---------- */
+
+/* Shared positioning context for BOTH leaderboard states: the tall card
+   (normal flow — its rendered height defines the stack's height, and is
+   IDENTICAL between locked/unlocked per Figma — locked node 89:1508 and
+   unlocked node 83:1382 are both top 213 / height 556 on a 360x800
+   frame), a purple fade sitting on top of it, and an overlay floating on
+   top of that fade, overlapping the card rather than following it in
+   normal flow:
+   - Locked (Figma 89:1491): the overlay is the Name Details card, sitting
+     ~24% of the way down the card (89:1613), with the Gradient (89:1577)
+     spanning almost the card's full height.
+   - Unlocked (Figma 83:1347): the overlay is the "Play Again" button,
+     floating at ~79.7% down the card (84:1452), with the Gradient
+     (84:1450) starting at ~74% down the card and dissolving the row list
+     into the page background — the button sits on top of that fade
+     rather than below the card as a separate block. */
+.leaderboard-stack {
+  position: relative;
+  margin: clamp(16px, 4vh, 24px) 0 0;
+}
+
+.leaderboard-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin: 0 20px;
+  padding: clamp(14px, 3.6vw, 18px) clamp(16px, 4vw, 20px);
+  background: linear-gradient(180deg, #ffffff 0%, #e9e9e9 100%);
+  border-radius: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  /* Fixed tall size (real `height`, not just a cap) so the card always
+     matches the Figma proportions regardless of row count — once the
+     real leaderboard has enough entries to fill it, the row list scrolls
+     internally (see .lb-rows-wrap) instead of growing the card, and the
+     fade + Play Again overlay (positioned as % of this height) never
+     drift out of place. */
+  height: clamp(460px, 66vh, 600px);
+  max-height: clamp(460px, 66vh, 600px);
+}
+
+/* The locked preview is purely decorative (mock rows, non-interactive) —
+   it should look clipped by the fade above, not offer its own scrollbar. */
+.leaderboard-card--locked .lb-rows-wrap {
+  overflow: hidden;
+}
+
+/* Full-width purple fade that sits on top of the card (but beneath the
+   floating overlay) and dissolves it into the page background. Shared
+   base styles; top/stop position differs per state below. */
+.leaderboard-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.leaderboard-fade[hidden] {
+  display: none;
+}
+
+/* Locked: Figma node 89:1577 "Gradient" spans ~6% to ~100% of the card's
+   own height, ending in the exact page bg color, giving the Name Details
+   card room to overlap comfortably below the lock pill. */
+.leaderboard-fade--locked {
+  top: 6%;
+  bottom: -40px;
+  background: linear-gradient(to bottom, rgba(42, 11, 85, 0) 0%, var(--color-bg) 85%);
+}
+
+/* Unlocked: Figma node 84:1450 "Gradient" starts at ~74% down the card
+   (622px of the card's 213-769px span on the 360x800 frame) and reaches
+   solid page-bg color well before the card's bottom edge, so the last
+   couple of rows dissolve into the Play Again button sitting on top of
+   it rather than being abruptly cut off.
+   The card itself has a `box-shadow: 0 8px 24px` (see .leaderboard-card)
+   which bleeds roughly 30px past its own bottom edge — against the flat
+   purple page background that shadow reads as a hard dark ring unless
+   this fade fully absorbs it first. So the fade overshoots the stack by
+   more than the shadow's reach (-70px, vs. the shadow's ~30px bleed) and
+   reaches fully opaque well before that overshoot ends, giving a clean,
+   seamless dissolve into the page instead of a visible cutoff edge. */
+.leaderboard-fade--unlocked {
+  top: 74%;
+  bottom: -70px;
+  background: linear-gradient(to bottom, rgba(42, 11, 85, 0) 0%, var(--color-bg) 45%);
+}
+
+.lb-columns {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 18px clamp(18px, 5vw, 22px) 1fr clamp(44px, 12vw, 56px) clamp(36px, 10vw, 44px);
+  gap: clamp(6px, 2vw, 8px);
+  font-family: var(--font-display-condensed);
+  /* Same reasoning as .leaderboard-hero__score — keep this at the font's
+     own native "Medium" weight (500) rather than 600 to avoid a
+     synthetic-bold render wherever real Futura Condensed Medium loads. */
+  font-weight: 500;
+  font-size: 11.5px;
+  letter-spacing: 0.14px;
+  color: #1c1c26;
+}
+
+.lb-columns__name {
+  grid-column: 1 / 4;
+}
+
+.lb-divider {
+  flex: 0 0 auto;
+  margin: 10px 0 14px;
+  border-bottom: 1px solid #ececf2;
+}
+
+/* ---------- Rows ---------- */
+
+.lb-rows-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lb-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 3vh, 20px);
+}
+
+.lb-row {
+  display: grid;
+  grid-template-columns: 18px clamp(18px, 5vw, 22px) 1fr clamp(44px, 12vw, 56px) clamp(36px, 10vw, 44px);
+  gap: clamp(6px, 2vw, 8px);
+  align-items: center;
+}
+
+.lb-row--me {
+  position: relative;
+}
+
+.lb-row--me::before {
+  /* Flush with the row's own box (no negative-offset bleed) — the
+     row list now sits inside a real scroll container (.lb-rows-wrap),
+     and a bleeding highlight would inflate its scrollHeight/scrollWidth
+     and trigger a stray scrollbar even when nothing needs scrolling. */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: rgba(161, 92, 255, 0.12);
+  z-index: -1;
+}
+
+.lb-row__rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+
+.lb-row__rank img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.lb-row__rank--num {
+  font-family: var(--font-display-condensed);
+  font-weight: 500;
+  font-size: clamp(13px, 3.8vw, 15px);
+  color: rgba(0, 0, 0, 0.7);
+  justify-content: flex-start;
+  width: auto;
+}
+
+.lb-row__avatar {
+  width: clamp(18px, 5vw, 22px);
+  height: clamp(18px, 5vw, 22px);
+  border-radius: 50%;
+  object-fit: cover;
+  background: #cfcfe0;
+  flex: 0 0 auto;
+}
+
+.lb-row__name {
+  font-family: var(--font-display-condensed);
+  font-weight: 500;
+  font-size: clamp(13px, 3.8vw, 15px);
+  color: rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-row__score,
+.lb-row__time {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(13px, 3.8vw, 15px);
+  color: rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+}
+
+.lb-empty {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.5);
+  padding: 6px 0 2px;
+}
+
+/* ---------- Locked-state blur overlay + lock pill ---------- */
+
+.lb-blur-overlay {
+  position: absolute;
+  inset: -4px -6px;
+  backdrop-filter: blur(3.9px);
+  -webkit-backdrop-filter: blur(3.9px);
+  background: rgba(255, 255, 255, 0.4);
+  z-index: 2;
+}
+
+.lb-blur-overlay[hidden] {
+  display: none;
+}
+
+.lb-lock-pill {
+  position: absolute;
+  left: 50%;
+  top: clamp(30px, 8vh, 44px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 3;
+  white-space: nowrap;
+}
+
+.lb-lock-pill[hidden] {
+  display: none;
+}
+
+.lb-lock-pill__icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+.lb-lock-pill__icon img {
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+}
+
+.lb-lock-pill__text {
+  font-family: var(--font-display-condensed);
+  font-weight: 500;
+  font-size: 12.5px;
+  letter-spacing: 0.15px;
+  color: #280952;
+}
+
+/* ---------- Unlocked "Play Again" action ---------- */
+
+/* Floats on top of the fade (Figma node 84:1452), overlapping the card's
+   own bottom ~20% rather than sitting below it in normal flow — matches
+   the ratio of the button's top (656px) relative to the card's own span
+   (213-769px) on the 360x800 Figma frame: (656-213)/556 ≈ 79.7%. */
+.leaderboard-unlocked-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 79.7%;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  padding: 0 20px;
+}
+
+.leaderboard-unlocked-actions[hidden] {
+  display: none;
+}
+
+.leaderboard-unlocked-actions .btn {
+  margin: 0 auto;
+}
+
+/* ---------- Name Details card (gate form) ---------- */
+
+.name-details-card {
+  /* Overlaps the leaderboard card + fade rather than following them in
+     normal flow — inset twice as far from the edges as the card itself
+     (40px vs. the card's 20px) so a sliver of the faded card peeks
+     around it, exactly like Figma node 89:1613 (32px vs. the card's
+     16px, on a 360px frame — the same 2:1 ratio). */
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  top: 24%;
+  z-index: 3;
+  padding: clamp(20px, 5vw, 26px) clamp(20px, 5vw, 24px) clamp(22px, 5vw, 26px);
+  background: #ffffff;
+  border: 1px solid #dbc9f5;
+  border-radius: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.name-details-card[hidden] {
+  display: none;
+}
+
+.name-details__label {
+  display: block;
+  margin: 0 0 8px;
+  /* Figma (node 89:1616/89:1617) specifies these labels in Futura:Medium,
+     not Poppins. */
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.14px;
+  color: #000000;
+}
+
+.name-details__label--gender {
+  margin-top: clamp(16px, 3.6vh, 22px);
+}
+
+.name-details__input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #dbc9f5;
+  border-radius: 8px;
+  /* Figma (node 89:1625 "Enter Name") specifies Futura:Medium. */
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 15px;
+  color: #1c1c26;
+  background: #ffffff;
+}
+
+.name-details__input::placeholder {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.name-details__input:focus {
+  outline: none;
+  border-color: var(--color-purple-light);
+}
+
+.gender-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(8px, 2.4vw, 10px);
+}
+
+.gender-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 27px;
+  background: #f8f3ff;
+  /* Figma (node 89:1619/1621/1623 "Chips") specifies Futura:Medium. */
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.16px;
+  color: #1c1c26;
+  transition: background 0.15s ease;
+}
+
+.gender-chip.is-selected {
+  background: #ece0ff;
+}
+
+.gender-chip__tick {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+}
+
+.gender-chip__tick[hidden] {
+  display: none;
+}
+
+.gender-chip__tick img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.name-details__save {
+  width: 100%;
+  max-width: none;
+  margin-top: clamp(20px, 4.4vh, 26px);
+}
+
+.name-details__error {
+  margin: 10px 0 0;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 12.5px;
+  color: #ff7a7a;
+  text-align: center;
+}
+
+.name-details__error[hidden] {
+  display: none;
+}
+
+/* ---------- Toast ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--color-white);
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: clamp(14px, 4vw, 17px);
+  z-index: 20;
+  pointer-events: none;
+  text-align: center;
+  max-width: 80vw;
+}
+
+.toast[hidden] {
+  display: none;
+}

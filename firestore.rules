@@ -1,0 +1,105 @@
+rules_version = '2';
+
+// Meesho Archery — leaderboard security rules.
+//
+// There is no auth in this app: every device gets a random client-generated
+// id (see getOrCreatePlayerId() in js/firebase-init.js) that doubles as the
+// Firestore document id under /players. Since anyone can call the Firestore
+// REST/SDK API directly with any payload, these rules are the ONLY thing
+// stopping a malicious client from writing arbitrary scores — the app code
+// enforces sane values, but the rules must too.
+//
+// Two legitimate write shapes come from js/firebase-init.js:
+//   1. saveProfileAndSync() — either creates the doc the first time (name,
+//      gender, avatar, score, time, createdAt, updatedAt), or on later
+//      visits updates ONLY name/gender/avatar/updatedAt, leaving score/time
+//      untouched.
+//   2. incrementPlayerStats() — updates ONLY score/time/updatedAt via
+//      increment(), once per finished round. A single round is capped at
+//      10 arrows x 10 points = 100 points, and the round timer is a fixed
+//      60s (see js/game.js: POINTS_PER_HIT, TOTAL_ARROWS, GAME_DURATION) —
+//      so a single increment can never legitimately raise score by more
+//      than 100 or time by more than 60.
+//
+// Reads are public (it's a leaderboard — names/scores are meant to be seen),
+// writes are validated field-by-field below. Deletes are never allowed from
+// the client.
+//
+// No expiry: unlike the Firebase Console's default 30-day test-mode rule
+// (`allow read, write: if request.time < timestamp.date(...)`), these rules
+// don't need — and shouldn't have — a time limit. They're validated by
+// content, not by a ticking clock, so they keep working indefinitely
+// instead of silently locking everyone out on some cutoff date.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /players/{playerId} {
+
+      allow read: if true;
+
+      allow create: if isValidNewPlayer(request.resource.data);
+
+      allow update: if isValidProfileUpdate(request.resource.data, resource.data)
+                    || isValidStatsIncrement(request.resource.data, resource.data);
+
+      allow delete: if false;
+    }
+
+    // Everything else is closed by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+function isValidNewPlayer(data) {
+  return data.keys().hasOnly(['name', 'gender', 'avatar', 'score', 'time', 'createdAt', 'updatedAt'])
+    && data.name is string
+    && data.name.size() > 0
+    && data.name.size() <= 24
+    && data.gender in ['male', 'female', 'unspecified']
+    && data.avatar is string
+    && data.avatar.matches('^assets/images/leaderboard/avatar-(male|female|neutral)-[0-9]+\\.png$')
+    // score/time on create come from this device's already-accumulated
+    // localStorage lifetime totals (possibly many rounds played before the
+    // player ever saves a profile), so they can legitimately be larger than
+    // one round's cap — these ceilings just block obviously-injected values.
+    && data.score is number
+    && data.score >= 0
+    && data.score <= 100000
+    && data.time is number
+    && data.time >= 0
+    && data.time <= 100000
+    && data.createdAt == request.time
+    && data.updatedAt == request.time;
+}
+
+function isValidProfileUpdate(newData, oldData) {
+  return newData.diff(oldData).affectedKeys().hasOnly(['name', 'gender', 'avatar', 'updatedAt'])
+    && newData.name is string
+    && newData.name.size() > 0
+    && newData.name.size() <= 24
+    && newData.gender in ['male', 'female', 'unspecified']
+    && newData.avatar is string
+    && newData.avatar.matches('^assets/images/leaderboard/avatar-(male|female|neutral)-[0-9]+\\.png$')
+    && newData.score == oldData.score
+    && newData.time == oldData.time
+    && newData.createdAt == oldData.createdAt
+    && newData.updatedAt == request.time;
+}
+
+function isValidStatsIncrement(newData, oldData) {
+  return newData.diff(oldData).affectedKeys().hasOnly(['score', 'time', 'updatedAt'])
+    && newData.score is number
+    && newData.score >= oldData.score
+    && newData.score - oldData.score <= 100
+    && newData.time is number
+    && newData.time >= oldData.time
+    && newData.time - oldData.time <= 60
+    && newData.name == oldData.name
+    && newData.gender == oldData.gender
+    && newData.avatar == oldData.avatar
+    && newData.createdAt == oldData.createdAt
+    && newData.updatedAt == request.time;
+}

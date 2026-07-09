@@ -9,6 +9,16 @@
 
   --font-body: "Poppins", system-ui, sans-serif;
 
+  /* Figma specs several leaderboard text styles in "Futura" (Condensed
+     Medium for headings/names/rank numbers, plain Medium for score/time
+     values) — Futura isn't a licensed web font we can self-host or pull
+     from Google Fonts, but it ships natively on macOS/iOS, so naming it
+     first lets those devices render the exact intended typeface. Oswald
+     (already loaded via Google Fonts) is the closest visual match as a
+     fallback everywhere else, condensed weight and all. */
+  --font-display-condensed: "Futura Condensed Medium", "Futura", "Oswald", var(--font-body);
+  --font-display: "Futura Medium", "Futura", "Oswald", var(--font-body);
+
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }

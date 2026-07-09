@@ -1,3 +1,5 @@
+import { incrementPlayerStats } from "./firebase-init.js";
+
 (() => {
   "use strict";
 
@@ -29,6 +31,19 @@
   // Score!" end-game screen (Figma node 81:1107). There is no backend, so a
   // simple localStorage value is the whole "high score" system.
   const HIGH_SCORE_KEY = "meeshoArcheryBestScore";
+
+  // Lifetime totals across every round ever played on this device — this is
+  // the leaderboard's ranking basis (see leaderboard.js): highest cumulative
+  // score first, lowest cumulative time as the tiebreak. Kept independent of
+  // whether the player has actually saved a leaderboard profile yet, so the
+  // "Your Total Score" figure on the leaderboard screen is accurate the
+  // moment they land there for the very first time.
+  const LIFETIME_SCORE_KEY = "meeshoArcheryLifetimeScore";
+  const LIFETIME_TIME_KEY = "meeshoArcheryLifetimeTime";
+  // Matches PROFILE_KEY in js/leaderboard.js — presence of this key is what
+  // tells us the player has already unlocked the leaderboard, so it's safe
+  // (and meaningful) to push this round's stats to Firestore.
+  const PROFILE_KEY = "meeshoArcheryProfile";
 
   // First-time "pull & release" tutorial hint (see .draw-hint in game.css).
   // Remembered per-device so it only ever plays until the player's first
@@ -121,6 +136,7 @@
   const gameOverEmoji = document.getElementById("game-over-emoji");
   const finalScoreEl = document.getElementById("final-score");
   const playAgainBtn = document.getElementById("play-again-btn");
+  const leaderboardBtn = document.getElementById("leaderboard-btn");
   const rewardsBtn = document.getElementById("rewards-btn");
   const howToPlayBtn = document.getElementById("how-to-play-btn");
   const backBtn = document.getElementById("back-btn");
@@ -800,6 +816,25 @@
       finalReason = "highscore";
     }
 
+    // Roll this round's score/time into the device's lifetime totals — the
+    // leaderboard's "Your Total Score" figure and its ranking basis. This
+    // happens for every round regardless of whether the player has unlocked
+    // the leaderboard yet, so the number is already accurate the first time
+    // they check.
+    const elapsedSeconds = GAME_DURATION - timeLeft;
+    const lifetimeScore = Number(localStorage.getItem(LIFETIME_SCORE_KEY) || 0) + score;
+    const lifetimeTime = Number(localStorage.getItem(LIFETIME_TIME_KEY) || 0) + elapsedSeconds;
+    localStorage.setItem(LIFETIME_SCORE_KEY, String(lifetimeScore));
+    localStorage.setItem(LIFETIME_TIME_KEY, String(lifetimeTime));
+
+    // Only push to Firestore once the player has actually saved a
+    // leaderboard profile (i.e. they have a doc there to increment) —
+    // otherwise this is silently skipped and the totals just live locally
+    // until they do.
+    if (localStorage.getItem(PROFILE_KEY)) {
+      incrementPlayerStats(score, elapsedSeconds).catch(() => {});
+    }
+
     const config = END_SCREENS[finalReason] || END_SCREENS[reason] || END_SCREENS.timer;
 
     gameOverOverlay.dataset.reason = finalReason;
@@ -850,6 +885,9 @@
   nockedArrow.addEventListener("pointercancel", onPointerUp);
 
   playAgainBtn.addEventListener("click", resetGame);
+  leaderboardBtn.addEventListener("click", () => {
+    window.location.href = "leaderboard.html";
+  });
   rewardsBtn.addEventListener("click", () => {
     window.location.href = "rewards.html";
   });
