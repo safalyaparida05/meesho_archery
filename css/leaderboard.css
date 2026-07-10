@@ -167,10 +167,17 @@
 .lb-rows {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 clamp(130px, 24vh, 180px);
   display: flex;
   flex-direction: column;
   gap: clamp(14px, 3vh, 20px);
+}
+
+/* The locked preview never scrolls (see .leaderboard-card--locked
+   .lb-rows-wrap overflow: hidden below) and is clipped by the blur
+   overlay anyway, so it doesn't need the scroll clearance above. */
+.leaderboard-card--locked .lb-rows {
+  padding-bottom: 0;
 }
 
 .lb-row {
