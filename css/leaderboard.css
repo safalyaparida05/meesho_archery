@@ -109,21 +109,26 @@
 }
 
 /* Unlocked: Figma node 84:1450 "Gradient" starts at ~74% down the card
-   (622px of the card's 213-769px span on the 360x800 frame) and reaches
-   solid page-bg color well before the card's bottom edge, so the last
-   couple of rows dissolve into the Play Again button sitting on top of
-   it rather than being abruptly cut off.
+   (622px of the card's 213-769px span on the 360x800 frame) and is a
+   plain 0%->100% dissolve across that ENTIRE band — it only reaches
+   fully solid page-bg color right at the very end, so the last couple
+   of rows fade in gradually rather than hitting a flat solid-color
+   block partway through (that abrupt "harsh" wall was previously
+   happening here because the solid stop landed at only 45% of the
+   band instead of 100%, leaving the remaining rows sitting in front
+   of plain solid purple with no gradient left to smooth them out).
    The card itself has a `box-shadow: 0 8px 24px` (see .leaderboard-card)
    which bleeds roughly 30px past its own bottom edge — against the flat
    purple page background that shadow reads as a hard dark ring unless
    this fade fully absorbs it first. So the fade overshoots the stack by
-   more than the shadow's reach (-70px, vs. the shadow's ~30px bleed) and
-   reaches fully opaque well before that overshoot ends, giving a clean,
-   seamless dissolve into the page instead of a visible cutoff edge. */
+   more than the shadow's reach (-70px, vs. the shadow's ~30px bleed),
+   matching Figma's own solid-at-100% pacing so the extra overshoot
+   distance is exactly what stretches the dissolve out further instead
+   of compressing it into a shorter, more abrupt transition. */
 .leaderboard-fade--unlocked {
   top: 74%;
   bottom: -70px;
-  background: linear-gradient(to bottom, rgba(42, 11, 85, 0) 0%, var(--color-bg) 45%);
+  background: linear-gradient(to bottom, rgba(42, 11, 85, 0) 0%, var(--color-bg) 100%);
 }
 
 .lb-columns {
