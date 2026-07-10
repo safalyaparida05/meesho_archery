@@ -1,4 +1,4 @@
-import { saveProfileAndSync, fetchLeaderboard, getOrCreatePlayerId } from "./firebase-init.js";
+import { saveProfileAndSync, fetchLeaderboard, getOrCreatePlayerId, isNameTaken } from "./firebase-init.js";
 
 /* ---------- Storage keys (must match js/game.js) ---------- */
 
@@ -200,13 +200,23 @@ saveProfileBtn.addEventListener("click", async () => {
   const originalLabel = saveProfileBtn.textContent;
   saveProfileBtn.textContent = "Saving...";
 
-  const profile = {
-    name,
-    gender: selectedGender,
-    avatar: pickRandomAvatar(selectedGender),
-  };
-
   try {
+    const myPlayerId = getOrCreatePlayerId();
+    const nameTaken = await isNameTaken(name, myPlayerId);
+    if (nameTaken) {
+      errorEl.textContent = "This name is already taken. Please try another one.";
+      errorEl.hidden = false;
+      saveProfileBtn.disabled = false;
+      saveProfileBtn.textContent = originalLabel;
+      return;
+    }
+
+    const profile = {
+      name,
+      gender: selectedGender,
+      avatar: pickRandomAvatar(selectedGender),
+    };
+
     await saveProfileAndSync({
       ...profile,
       score: getLifetimeScore(),

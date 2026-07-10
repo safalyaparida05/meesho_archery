@@ -113,6 +113,32 @@ export async function incrementPlayerStats(roundScore, roundTimeSeconds) {
 }
 
 /**
+ * Checks whether another player has already claimed this name (case- and
+ * whitespace-insensitive, e.g. "Ankita" and " ankita " collide) so the
+ * name-details form can block duplicates before saving. `excludePlayerId`
+ * is this device's own player id, so a returning player never gets flagged
+ * against their own already-saved name.
+ *
+ * This does a full-collection read rather than a Firestore query because
+ * there's no normalized "nameLower" field in the schema (and adding one
+ * would require a security-rules change) — fine at this app's scale, and
+ * it's the same read pattern fetchLeaderboard() already relies on.
+ */
+export async function isNameTaken(name, excludePlayerId) {
+  const target = name.trim().toLowerCase();
+  const snap = await getDocs(collection(db, PLAYERS_COLLECTION));
+  let taken = false;
+  snap.forEach((docSnap) => {
+    if (docSnap.id === excludePlayerId) return;
+    const existingName = docSnap.data().name;
+    if (typeof existingName === "string" && existingName.trim().toLowerCase() === target) {
+      taken = true;
+    }
+  });
+  return taken;
+}
+
+/**
  * Fetches every player and sorts by the ranking rule the user specified:
  * highest lifetime score first, then lowest lifetime time as the tiebreak.
  */
