@@ -59,7 +59,7 @@ import { incrementPlayerStats } from "./firebase-init.js";
   const END_SCREENS = {
     timer: {
       title: "Time's Up!",
-      sticker: "assets/images/endgame-timesup.png",
+      sticker: "assets/images/endgame-timesup.webp",
       alt: "Time's up!",
       rotate: -8.21,
       width: "clamp(150px, 44vw, 205px)",
@@ -67,7 +67,7 @@ import { incrementPlayerStats } from "./firebase-init.js";
     },
     bomb: {
       title: "Boom!",
-      sticker: "assets/images/endgame-bomb.png",
+      sticker: "assets/images/endgame-bomb.webp",
       alt: "Boom! You hit a bomb",
       rotate: -5.75,
       width: "clamp(150px, 46vw, 210px)",
@@ -75,7 +75,7 @@ import { incrementPlayerStats } from "./firebase-init.js";
     },
     arrows: {
       title: "Out of Arrows!",
-      sticker: "assets/images/endgame-arrows.png",
+      sticker: "assets/images/endgame-arrows.webp",
       alt: "You ran out of arrows",
       rotate: 6.28,
       width: "clamp(160px, 50vw, 220px)",
@@ -83,7 +83,7 @@ import { incrementPlayerStats } from "./firebase-init.js";
     },
     highscore: {
       title: "New High Score!",
-      sticker: "assets/images/endgame-highscore.png",
+      sticker: "assets/images/endgame-highscore.webp",
       alt: "New high score!",
       rotate: 0,
       width: "clamp(150px, 46vw, 210px)",
@@ -396,7 +396,7 @@ import { incrementPlayerStats } from "./firebase-init.js";
     el.dataset.hit = "false";
 
     const img = document.createElement("img");
-    img.src = `assets/images/objects/${def.name}.png`;
+    img.src = `assets/images/objects/${def.name}.webp`;
     img.alt = "";
     img.draggable = false;
     el.appendChild(img);
@@ -469,7 +469,7 @@ import { incrementPlayerStats } from "./firebase-init.js";
       const el = document.createElement("div");
       el.className = "quiver-arrow";
       const img = document.createElement("img");
-      img.src = "assets/images/arrow.png";
+      img.src = "assets/images/arrow.webp";
       img.alt = "";
       el.appendChild(img);
       quiverEl.appendChild(el);
@@ -720,7 +720,7 @@ import { incrementPlayerStats } from "./firebase-init.js";
     flyingArrow.style.top = `${startY}px`;
     flyingArrow.style.transform = "translate(-50%, 0)";
     const img = document.createElement("img");
-    img.src = "assets/images/arrow.png";
+    img.src = "assets/images/arrow.webp";
     img.alt = "";
     flyingArrow.appendChild(img);
     flightLayer.appendChild(flyingArrow);

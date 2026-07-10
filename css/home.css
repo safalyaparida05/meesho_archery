@@ -3,6 +3,8 @@
 .home-screen {
   overflow: visible;
   min-height: auto;
+  overscroll-behavior: auto;
+  touch-action: pan-y;
   background: #ffffff;
   color: #1c1c26;
 }
