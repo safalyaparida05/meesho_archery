@@ -328,14 +328,30 @@
 /* ---------- Unlocked "Play Again" action ---------- */
 
 /* Floats on top of the fade (Figma node 84:1452), overlapping the card's
-   own bottom ~20% rather than sitting below it in normal flow — matches
-   the ratio of the button's top (656px) relative to the card's own span
-   (213-769px) on the 360x800 Figma frame: (656-213)/556 ≈ 79.7%. */
+   own bottom portion rather than sitting below it in normal flow. Pinned
+   to the actual screen edge (rather than a % of the card's height) so it
+   lands in the same comfortable spot regardless of viewport height/aspect
+   ratio — a %-based position drifted noticeably higher up on shorter
+   viewports and taller cards. `position: fixed` is relative to the real
+   viewport, so it's re-centered/width-capped to match `.screen`'s own
+   centered 560px column (see css/style.css) instead of spanning the full
+   browser window on wide/desktop viewports.
+   The gap itself scales with viewport height rather than staying a flat
+   80px everywhere: 9.85vh reproduces ~80px on an ~812px-tall phone (the
+   reference size this was tuned against), shrinks proportionally on
+   shorter phones so the button doesn't eat further into the row list
+   than it needs to, and is capped at 80px so it doesn't drift too far up
+   on tall/desktop viewports. The 40px floor keeps a sane minimum gap on
+   very short/landscape viewports. The safe-area inset keeps it clear of
+   the home indicator on notched phones. */
 .leaderboard-unlocked-actions {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 79.7%;
+  position: fixed;
+  left: 50%;
+  right: auto;
+  bottom: calc(clamp(40px, 9.85vh, 80px) + var(--safe-bottom));
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 560px;
   z-index: 3;
   display: flex;
   justify-content: center;
