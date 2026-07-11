@@ -71,7 +71,9 @@
 .conveyor {
   position: relative;
   overflow: hidden;
-  background: var(--color-bg);
+  /* No explicit fill — let the screen's own natural background show through
+     instead of painting a separate color over it. */
+  background: none;
   padding: clamp(8px, 1.8vh, 14px) 0;
   flex: 0 0 auto;
   z-index: 2;
@@ -168,8 +170,8 @@
     #40204c 28.79%,
     var(--color-bg) 28.79%,
     var(--color-bg) 65.15%,
-    #320d65 65.15%,
-    #320d65 100%
+    var(--color-target-outer) 65.15%,
+    var(--color-target-outer) 100%
   );
 }
 
@@ -236,10 +238,19 @@
   flex-direction: column;
   align-items: center;
   padding-top: clamp(4px, 1.2vh, 10px);
-  /* Only the hardware safe-area inset — no extra decorative gap — so the
-     quiver row's arrow tips end flush with the bottom of the screen. */
-  padding-bottom: var(--safe-bottom);
-  background: linear-gradient(to bottom, rgba(42, 11, 85, 0) 0%, var(--color-bg-deep) 55%, var(--color-bg-fade) 100%);
+  /* Now that the spare-arrow row lives in `.quiver` as an absolutely
+     positioned left-side stack (see below), it no longer occupies flow
+     space under the bow — so this padding is the ONLY thing keeping the
+     nocked arrow's resting position clear of the screen's bottom edge.
+     That headroom isn't decorative: js/game.js's pull-distance clamp
+     (maxPullPx in onPointerDown) measures room from this resting position
+     down to the true viewport bottom, so if it's too small the player
+     can't draw the bow at all. Keep a real functional buffer here, not
+     just the hardware safe-area inset. */
+  padding-bottom: calc(var(--safe-bottom) + clamp(30px, 7vh, 44px));
+  /* No explicit fill — let the screen's own natural background show through
+     instead of painting a separate color over it. */
+  background: none;
   z-index: 2;
 }
 
@@ -276,6 +287,26 @@
   background: none;
   border: none;
   padding: 0;
+}
+
+/* Invisible, enlarged touch target. Users testing the game could only
+   reliably grab the arrow near its tail — the visible arrow is a very thin
+   ~16-20px shaft, so an imprecise touch anywhere else along its length (e.g.
+   near the tip) missed the button entirely and only touches landing right on
+   the tail (near the bow, where fingers naturally rest) registered.
+   This pseudo-element pads the actual hit area well beyond the rendered
+   artwork on all sides — including past the tip — without changing the
+   button's own box (`.nocked-arrow`'s width/height, used by game.js for the
+   pull-distance math and the string-anchor position, is untouched). Because
+   it's generated content of the button, pointer events landing on it are
+   dispatched to the button itself, so no JS changes are required. */
+.nocked-arrow::before {
+  content: "";
+  position: absolute;
+  top: clamp(-26px, -7vw, -18px);
+  bottom: clamp(-10px, -2.4vw, -6px);
+  left: clamp(-20px, -5.5vw, -14px);
+  right: clamp(-20px, -5.5vw, -14px);
 }
 
 .nocked-arrow img {
@@ -315,15 +346,37 @@
   z-index: 1;
 }
 
+/* Vertical spare-arrow stack along the left edge, instead of a horizontal
+   row under the bow. The row was hard to see and, on short/narrow screens,
+   sat right where players needed to drag/release — overlapping the shoot
+   gesture. `.quiver-area` stays `position: relative` with only `.bow-wrap`
+   left in its normal flex flow now; `.quiver` is taken out of flow and
+   absolutely positioned so it can extend upward past `.quiver-area`'s own
+   (now much shorter) box into the visual `.arena` region above, exactly
+   like `.nocked-arrow`'s tip already does — `.quiver-area`'s z-index (2) is
+   higher than `.arena`'s (1), so the overflowing part still paints on top
+   with no clipping (`.arena` only clips its own descendants). */
 .quiver {
+  position: absolute;
+  /* The stack should sit flush against the screen's left edge with zero
+     visible gap. It looks like it needs an offset because `.quiver-arrow`
+     is rotated 90deg (see below): rotating a W-wide/H-tall box around its
+     own center swaps its visual footprint to H-wide/W-tall, centered on the
+     SAME point — since H > W here, that overhangs the item's own unrotated
+     layout box by (H-W)/2 on both the left AND right. If `left` were 0, that
+     left overhang would push the visible arrowhead past the true screen
+     edge (clipped off by `.screen`'s overflow:hidden) while still leaving
+     nothing touching x=0 exactly. Offsetting `left` by exactly that
+     half-overhang cancels it out so the rotated artwork's actual painted
+     left edge lands precisely at the screen's left edge, no gap, no clip. */
+  left: calc((clamp(15px, 3.6vh, 20px) - clamp(11px, 3.6vw, 15px)) / 2);
+  bottom: clamp(30px, 8vh, 46px);
   display: flex;
-  width: 100%;
-  padding: 0 6%;
-  gap: clamp(4px, 1.6vw, 10px);
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-top: clamp(10px, 2.5vh, 18px);
-  transition: padding 0.24s ease;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: clamp(3px, 1vh, 6px);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .quiver-arrow {
@@ -332,6 +385,10 @@
   flex: 0 0 auto;
   position: relative;
   overflow: hidden;
+  /* Rotate the whole cropped-icon box (see `.quiver-arrow img` below) 90°
+     so the arrowhead points sideways/inward, matching a stacked quiver of
+     arrows resting against the left edge instead of an upright row. */
+  transform: rotate(90deg);
   transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
@@ -349,7 +406,7 @@
 .quiver-arrow.is-used {
   opacity: 0;
   visibility: hidden;
-  transform: translateY(8px);
+  transform: rotate(90deg) translateY(8px);
   pointer-events: none;
 }
 

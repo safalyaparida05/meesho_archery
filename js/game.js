@@ -14,7 +14,7 @@ import { incrementPlayerStats } from "./firebase-init.js";
   const FLIGHT_OVERSHOOT_PX = 14; // how far past the conveyor's top edge the arrow travels before vanishing
   const MIN_PULL_PX = 14; // below this, release cancels the shot
   const MAX_PULL_PX = 64; // full charge distance, capped further per-pull to fit on screen
-  const PULL_SAFE_MARGIN_PX = 10; // keep the stretched string/arrow this far clear of the screen edge
+  const PULL_SAFE_MARGIN_PX = 16; // keep the stretched string/arrow this far clear of the screen edge
   // Tight hit window: the arrow's lane has to land close to dead-center on the
   // object's own artwork (not just anywhere inside its padded box), so shots
   // must be timed/aimed precisely rather than lightly grazing an object.
@@ -653,8 +653,23 @@ import { incrementPlayerStats } from "./firebase-init.js";
     // viewport on shorter screens. Clamp to whatever room is really there.
     const screenRect = gameScreen.getBoundingClientRect();
     const nockRect = nockedArrow.getBoundingClientRect();
-    const availablePx = screenRect.bottom - nockRect.bottom - PULL_SAFE_MARGIN_PX;
-    maxPullPx = Math.max(MIN_PULL_PX, Math.min(MAX_PULL_PX, availablePx));
+    // `.screen` only sets a `min-height`, not a `height` — if its content
+    // ever ends up taller than the viewport, screenRect.bottom describes
+    // that (possibly off-screen) box edge, not what's actually visible.
+    // Bound against the real viewport too so "room" always means room the
+    // player can actually see.
+    const viewportBottom = Math.min(screenRect.bottom, window.innerHeight);
+    const availablePx = viewportBottom - nockRect.bottom - PULL_SAFE_MARGIN_PX;
+    // Never allow more pull than the room that's really there. This must
+    // NOT have a lower floor forcing a minimum pull distance regardless of
+    // available room (a previous version did `Math.max(MIN_PULL_PX, ...)`
+    // here) — that guaranteed at least a 14px pull even when there was less
+    // than 14px of real space below the resting arrow, which is exactly
+    // what let the drawn arrow/string travel past the bottom edge of the
+    // screen on cramped layouts. Bottoming out at 0 on a truly cramped
+    // screen (no draw possible) is a safer failure mode than ever letting
+    // the arrow render off-screen.
+    maxPullPx = Math.max(0, Math.min(MAX_PULL_PX, availablePx));
 
     nockedArrow.classList.add("is-pulling");
     nockedArrow.setPointerCapture(ev.pointerId);

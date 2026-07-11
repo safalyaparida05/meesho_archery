@@ -2,6 +2,14 @@
   --color-bg-deep: #24054f;
   --color-bg: #2a0b55;
   --color-bg-fade: #28035c;
+  /* Outermost ring color of the game screen's circular target graphic
+     (css/game.css .arena__target). Shared as a variable so the conveyor
+     strip and bow/quiver panel can match it exactly instead of falling
+     back to --color-bg, which is a visibly different shade and was
+     creating a hard seam right where the target's rings meet those
+     neighboring regions — looking like a solid box cutting into the
+     target artwork. */
+  --color-target-outer: #320d65;
   --color-purple-light: #a15cff;
   --color-btn-grad-top: #7d41ce;
   --color-btn-grad-bottom: #6700f1;
