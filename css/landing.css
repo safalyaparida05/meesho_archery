@@ -27,7 +27,19 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 15%;
+  /* New target-and-arrow artwork (Figma node 129:1384) is a tall 572x1024
+     source. On typical narrow/tall phone viewports this box is
+     height-bound (scales to fill height, crops only a sliver off the
+     sides), so vertical position barely matters there. But on short or
+     wide viewports (landscape phones, short windows) the box becomes
+     width-bound instead and crops vertically — a top-anchored position
+     (50% 0%) was cropping straight into empty background above the
+     artwork and hiding the whole target on short screens. The actual
+     target+arrow artwork sits roughly in the 20%-60% band of the source
+     image's height, so anchoring at 50% 40% keeps that band centered in
+     the visible crop across the widest range of viewport aspect ratios,
+     instead of only working for the tall-phone case. */
+  object-position: 50% 40%;
 }
 
 .hero__fade-top {
