@@ -107,6 +107,27 @@
   user-select: none;
 }
 
+/* Sweet-spot marker for the tiered scoring in js/game.js (resolveShot /
+   CENTER_ZONE_RATIO): landing on this red-and-white target dot (the exact
+   dead-center point of the object) scores full points; a grazing hit
+   elsewhere on the object (but still close enough to count) scores less
+   instead of being a silent total miss. Matches the dot from the Figma
+   "Target" component (node 134:1640, file 1W3AlCoHiFTrHovnFVm6iy) — an
+   earlier version also drew that component's translucent vertical band
+   around the dot, but the user preferred just the dot on its own. */
+.conveyor__item-target-dot {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  width: 7.5%;
+  height: 7.5%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #e92503;
+  border: 1px solid #ffffff;
+  pointer-events: none;
+}
+
 .conveyor__item.is-hit {
   animation: pop-hit 0.3s ease forwards;
 }

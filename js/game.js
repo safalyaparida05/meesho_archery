@@ -7,7 +7,8 @@ import { incrementPlayerStats } from "./firebase-init.js";
 
   const GAME_DURATION = 60; // seconds
   const TOTAL_ARROWS = 10;
-  const POINTS_PER_HIT = 10;
+  const POINTS_PER_HIT = 10; // dead-center hit, on the sweet-spot target dot
+  const POINTS_PER_EDGE_HIT = 5; // grazing hit, inside the tolerance window but outside the sweet spot
   const ARROW_SPEED_PX_MS = 1.15; // flight speed, so travel time scales with screen size
   const FLIGHT_DURATION_MIN = 280; // ms
   const FLIGHT_DURATION_MAX = 650; // ms
@@ -20,6 +21,14 @@ import { incrementPlayerStats } from "./firebase-init.js";
   // must be timed/aimed precisely rather than lightly grazing an object.
   const MIN_TOLERANCE_FACTOR = 0.12; // fraction of an item's half-width counted as a hit at zero charge
   const MAX_TOLERANCE_FACTOR = 0.42; // fraction of an item's half-width counted as a hit at full charge
+  // Players were being credited nothing at all for a shot that clearly
+  // grazed an object's edge, which felt like the game was "cheating" them —
+  // full points now require landing within this inner slice of the existing
+  // tolerance window (the red-and-white target dot drawn on each item, see
+  // `.conveyor__item-target-dot` in css/game.css); anything further out but
+  // still inside the tolerance window is a lower-value edge hit instead of
+  // a full miss.
+  const CENTER_ZONE_RATIO = 0.5; // fraction of the tolerance window that counts as a dead-center hit
   const BELT_SPEED_START = 90; // px/s at game start
   const BELT_SPEED_END = 220; // px/s at game end (ramps up over GAME_DURATION)
   const RELOAD_DROP_PX = 46; // how far below rest the next arrow starts before sliding in
@@ -401,6 +410,20 @@ import { incrementPlayerStats } from "./firebase-init.js";
     img.draggable = false;
     el.appendChild(img);
 
+    // Visual cue for the tiered scoring below (see resolveShot/
+    // CENTER_ZONE_RATIO), matching the dot from the Figma "Target"
+    // component: a small red-and-white dot marks the exact dead-center
+    // point of the object — landing on it scores full points, a grazing
+    // hit elsewhere on the object scores less. Skipped on bombs — hitting
+    // one anywhere inside the tolerance window ends the round regardless of
+    // how close to center it was, so a sweet-spot marker would be
+    // misleading there.
+    if (!def.isBomb) {
+      const targetDot = document.createElement("div");
+      targetDot.className = "conveyor__item-target-dot";
+      el.appendChild(targetDot);
+    }
+
     return el;
   }
 
@@ -767,6 +790,7 @@ import { incrementPlayerStats } from "./firebase-init.js";
 
     let bestItem = null;
     let bestDistance = Infinity;
+    let bestTolerance = 0;
 
     conveyorTrack.querySelectorAll(".conveyor__item").forEach((item) => {
       if (item.dataset.hit === "true") return;
@@ -777,6 +801,7 @@ import { incrementPlayerStats } from "./firebase-init.js";
       if (distance <= tolerance && distance < bestDistance) {
         bestDistance = distance;
         bestItem = item;
+        bestTolerance = tolerance;
       }
     });
 
@@ -789,10 +814,18 @@ import { incrementPlayerStats } from "./firebase-init.js";
         endGame("bomb", "You hit a bomb!");
         return;
       }
+      // Dead-center (on the sweet-spot target dot) scores full points; still
+      // inside the tolerance window but further out is a grazing edge hit
+      // worth less — previously anything outside the (narrower) window was
+      // silently a total miss, which felt unfair for shots that clearly
+      // clipped the object.
+      const isCenterHit = bestDistance <= bestTolerance * CENTER_ZONE_RATIO;
+      const points = isCenterHit ? POINTS_PER_HIT : POINTS_PER_EDGE_HIT;
       bestItem.classList.add("is-hit");
-      score += POINTS_PER_HIT;
+      if (!isCenterHit) bestItem.classList.add("is-edge-hit");
+      score += points;
       updateScoreDisplay();
-      spawnScorePopup(laneX - arenaRect.left, laneY - arenaRect.top, `+${POINTS_PER_HIT}`, false);
+      spawnScorePopup(laneX - arenaRect.left, laneY - arenaRect.top, `+${points}`, false);
     } else {
       spawnScorePopup(laneX - arenaRect.left, laneY - arenaRect.top, "Miss", true);
     }
