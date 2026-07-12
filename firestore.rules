@@ -134,6 +134,13 @@ function isValidNewPlayer(data) {
 }
 
 function isValidProfileUpdate(newData, oldData) {
+  // oldData.score/time are read via get(key, default) rather than dot access
+  // because a handful of legacy docs predate this schema and are missing one
+  // of these fields — a direct oldData.time reference throws on a missing
+  // key, which Firestore treats as a denied write, permanently locking that
+  // player's doc out of ANY future update (the bug behind a real player's
+  // lifetime total silently freezing). Healthy docs are unaffected since
+  // get() returns the real stored value whenever the key is present.
   return newData.diff(oldData).affectedKeys().hasOnly(['name', 'gender', 'avatar', 'updatedAt'])
     && newData.name is string
     && newData.name.size() > 0
@@ -141,20 +148,21 @@ function isValidProfileUpdate(newData, oldData) {
     && newData.gender in ['male', 'female', 'unspecified']
     && newData.avatar is string
     && newData.avatar.matches('^assets/images/leaderboard/avatar-(male|female|neutral)-[0-9]+\\.png$')
-    && newData.score == oldData.score
-    && newData.time == oldData.time
+    && newData.score == oldData.get('score', 0)
+    && newData.time == oldData.get('time', 0)
     && newData.createdAt == oldData.createdAt
     && newData.updatedAt == request.time;
 }
 
 function isValidStatsIncrement(newData, oldData) {
+  // See isValidProfileUpdate's comment above — same get(key, default) fix.
   return newData.diff(oldData).affectedKeys().hasOnly(['score', 'time', 'updatedAt'])
     && newData.score is number
-    && newData.score >= oldData.score
-    && newData.score - oldData.score <= 100
+    && newData.score >= oldData.get('score', 0)
+    && newData.score - oldData.get('score', 0) <= 100
     && newData.time is number
-    && newData.time >= oldData.time
-    && newData.time - oldData.time <= 60
+    && newData.time >= oldData.get('time', 0)
+    && newData.time - oldData.get('time', 0) <= 60
     && newData.name == oldData.name
     && newData.gender == oldData.gender
     && newData.avatar == oldData.avatar
