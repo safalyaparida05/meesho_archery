@@ -201,7 +201,7 @@ img {
    are used up. Uses the native disabled attribute rather than a class so
    the button is also actually unclickable, not just visually dimmed. */
 .btn:disabled {
-  border-color: #000000;
+  border-color: #5b5b5b;
   color: #9d9d9d;
   background-image: linear-gradient(179.5deg, rgb(94, 94, 94) 1.4%, rgb(58, 58, 58) 98.4%);
   cursor: not-allowed;
