@@ -8,6 +8,7 @@
 
 .leaderboard-hero {
   padding: clamp(14px, 3vh, 22px) clamp(20px, 6vw, 28px) 0;
+  text-align: center;
 }
 
 .leaderboard-hero__label {
@@ -19,21 +20,45 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
-.leaderboard-hero__score {
-  margin: clamp(4px, 1.2vh, 8px) 0 0;
+/* ---------- Daily / Lifetime tabs (Figma node 135:1642) ---------- */
+
+.lb-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin: clamp(8px, 2vh, 12px) 0 0;
+}
+
+.lb-tab {
+  width: 100px;
+  padding: 6px 20px;
   font-family: var(--font-display-condensed);
-  /* "Futura Condensed Medium" is a single static-weight font face — asking
-     for font-weight:600 on it (rather than its native ~500 "Medium")
-     forces the browser to synthesize a bolder version wherever the real
-     Futura is actually installed (macOS/iOS), which reads as a distorted,
-     unexpectedly chunky face instead of the clean look Figma shows. 500
-     matches the face's own built-in weight so no synthetic bolding
-     kicks in, while still rendering appropriately bold on the Oswald/
-     Poppins fallback used everywhere else. */
+  /* Same reasoning as .leaderboard-hero__score above: 500 matches the real
+     Futura Condensed Medium face's native weight, avoiding synthetic bold. */
   font-weight: 500;
-  font-size: clamp(20px, 6vw, 26px);
-  letter-spacing: 0.3px;
-  color: var(--color-white);
+  font-size: 14px;
+  letter-spacing: 0.168px;
+  text-align: center;
+  background: linear-gradient(180deg, rgb(55, 15, 109) 0%, rgb(74, 26, 140) 100%);
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid transparent;
+}
+
+/* Corner-rounding is fixed by each tab's position in the pair (so the pill's
+   two outer edges stay round while the shared inner edge — where the 4px
+   gap sits — stays square), independent of which tab is currently active. */
+.lb-tab--left {
+  border-radius: 999px 0 0 999px;
+}
+
+.lb-tab--right {
+  border-radius: 0 999px 999px 0;
+}
+
+.lb-tab.is-active {
+  background: linear-gradient(180deg, #fce677 0%, #dfa03a 100%);
+  border-color: #f8dd70;
+  color: #000000;
 }
 
 /* ---------- Leaderboard card ---------- */

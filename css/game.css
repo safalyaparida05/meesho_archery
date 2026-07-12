@@ -612,11 +612,31 @@
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
 }
 
+/* .game-over-sticker sets its own `display: flex` above, which otherwise
+   beats the UA stylesheet's plain `[hidden] { display: none }` rule on
+   specificity — needs its own explicit override to actually hide. */
+.game-over-sticker[hidden] {
+  display: none;
+}
+
 .game-over-score {
   margin: 0;
   font-family: "Instrument Serif", var(--font-body), serif;
   font-weight: 400;
   font-size: clamp(18px, 5vw, 21px);
+  letter-spacing: 0.2px;
+  color: var(--color-white);
+}
+
+/* Shown instead of the score/sticker/emoji when the game screen is loaded
+   directly with zero plays left for the day (no round was actually played
+   this visit) — see showPlaysExhaustedBlock() in js/game.js. */
+.game-over-blocked-message {
+  margin: 0;
+  max-width: 280px;
+  font-family: "Instrument Serif", var(--font-body), serif;
+  font-weight: 400;
+  font-size: clamp(16px, 4.6vw, 19px);
   letter-spacing: 0.2px;
   color: var(--color-white);
 }
@@ -643,6 +663,14 @@
 
 .game-over-actions .btn {
   margin: 0;
+}
+
+/* The play-gate wrapper (chip + Play Again button) needs a little extra
+   headroom above it so the chip's upward overlap (see .plays-chip in
+   css/style.css) doesn't visually collide with the sticker/score content
+   above it. */
+.game-over-actions .play-gate {
+  margin-top: 12px;
 }
 
 /* ---------- Toast ---------- */

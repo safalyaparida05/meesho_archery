@@ -4,26 +4,59 @@ rules_version = '2';
 //
 // There is no auth in this app: every device gets a random client-generated
 // id (see getOrCreatePlayerId() in js/firebase-init.js) that doubles as the
-// Firestore document id under /players. Since anyone can call the Firestore
+// Firestore document id under /players (and under each day's
+// /dailyLeaderboard/{istDate}/players). Since anyone can call the Firestore
 // REST/SDK API directly with any payload, these rules are the ONLY thing
-// stopping a malicious client from writing arbitrary scores — the app code
-// enforces sane values, but the rules must too.
+// stopping a malicious client from writing arbitrary scores or bypassing the
+// daily play cap — the app code enforces sane values too, but the rules must
+// hold on their own.
+//
+// ---------------------------------------------------------------------------
+// Collection 1: /players/{playerId} — LIFETIME totals, unchanged in shape
+// except `time` (cumulative) has been replaced by `bestTime` (the fastest
+// single round ever played), to match the Lifetime tab's tiebreak rule.
 //
 // Two legitimate write shapes come from js/firebase-init.js:
 //   1. saveProfileAndSync() — either creates the doc the first time (name,
-//      gender, avatar, score, time, createdAt, updatedAt), or on later
-//      visits updates ONLY name/gender/avatar/updatedAt, leaving score/time
-//      untouched.
-//   2. incrementPlayerStats() — updates ONLY score/time/updatedAt via
-//      increment(), once per finished round. A single round is capped at
-//      10 arrows x 10 points = 100 points, and the round timer is a fixed
-//      60s (see js/game.js: POINTS_PER_HIT, TOTAL_ARROWS, GAME_DURATION) —
-//      so a single increment can never legitimately raise score by more
-//      than 100 or time by more than 60.
+//      gender, avatar, score, bestTime, createdAt, updatedAt), or on later
+//      visits updates ONLY name/gender/avatar/updatedAt, leaving
+//      score/bestTime untouched.
+//   2. incrementPlayerStats() — updates ONLY score/bestTime/updatedAt, once
+//      per finished round: score only ever goes up (by at most one round's
+//      cap), bestTime only ever goes down or stays the same (it's a running
+//      minimum, not a sum).
 //
-// Reads are public (it's a leaderboard — names/scores are meant to be seen),
-// writes are validated field-by-field below. Deletes are never allowed from
-// the client.
+// ---------------------------------------------------------------------------
+// Collection 2: /dailyLeaderboard/{istDate}/players/{playerId} — DAILY best
+// score, one doc per player per IST calendar day (istDate is "YYYY-MM-DD" in
+// Asia/Kolkata, see getIstDateString() in js/plays.js). Living at this path
+// (rather than a flat collection with a composite doc id) means istDate and
+// playerId can be validated straight off the path instead of parsed back out
+// of a string.
+//
+// The one write shape comes from recordDailyRound() in js/firebase-init.js,
+// called once per finished round once a profile exists:
+//   - Creates the day's doc on the player's first play of that IST day
+//     (bestScore/bestTime = that round's values, playsUsed = 1).
+//   - Otherwise updates it: bestScore/bestTime only move if this round beat
+//     the existing best (higher score, or same score with a faster time —
+//     the same rule used to rank the tab itself), and playsUsed always goes
+//     up by EXACTLY 1. Since playsUsed cannot jump by more than 1 per write
+//     and is capped at MAX_PLAYS_PER_DAY() below, this is what actually
+//     enforces the daily play limit at the database level, not just in the
+//     app.
+//
+// KNOWN LIMITATION: istDate is whatever string the client sends — these
+// rules check it's a plausible YYYY-MM-DD, but nothing here cryptographically
+// proves it's the server's real current IST date. A determined client could
+// write to a fabricated "new" istDate to dodge the play cap. Closing that
+// gap fully would need a Cloud Function (or App Check + server-computed
+// date), which is out of scope for this no-auth, static-hosted app — this is
+// a deliberate, documented trade-off, not an oversight.
+//
+// Reads are public on both collections (it's a leaderboard — names/scores
+// are meant to be seen), writes are validated field-by-field below. Deletes
+// are never allowed from the client on either collection.
 //
 // No expiry: unlike the Firebase Console's default 30-day test-mode rule
 // (`allow read, write: if request.time < timestamp.date(...)`), these rules
@@ -46,6 +79,18 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /dailyLeaderboard/{istDate}/players/{playerId} {
+
+      allow read: if true;
+
+      allow create: if isValidIstDate(istDate) && isValidDailyCreate(request.resource.data);
+
+      allow update: if isValidIstDate(istDate)
+                    && isValidDailyUpdate(request.resource.data, resource.data);
+
+      allow delete: if false;
+    }
+
     // Everything else is closed by default.
     match /{document=**} {
       allow read, write: if false;
@@ -53,24 +98,37 @@ service cloud.firestore {
   }
 }
 
+// The single number to change to move the daily play cap (e.g. 5 -> 3).
+// Keep this in sync with MAX_PLAYS_PER_DAY in js/plays.js.
+function MAX_PLAYS_PER_DAY() {
+  return 5;
+}
+
+function isValidIstDate(istDate) {
+  return istDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+}
+
+/* ---------- /players (lifetime) ---------- */
+
 function isValidNewPlayer(data) {
-  return data.keys().hasOnly(['name', 'gender', 'avatar', 'score', 'time', 'createdAt', 'updatedAt'])
+  return data.keys().hasOnly(['name', 'gender', 'avatar', 'score', 'bestTime', 'createdAt', 'updatedAt'])
     && data.name is string
     && data.name.size() > 0
     && data.name.size() <= 24
     && data.gender in ['male', 'female', 'unspecified']
     && data.avatar is string
     && data.avatar.matches('^assets/images/leaderboard/avatar-(male|female|neutral)-[0-9]+\\.png$')
-    // score/time on create come from this device's already-accumulated
-    // localStorage lifetime totals (possibly many rounds played before the
-    // player ever saves a profile), so they can legitimately be larger than
-    // one round's cap — these ceilings just block obviously-injected values.
+    // score/bestTime on create come from this device's already-accumulated
+    // localStorage lifetime state (possibly many rounds played before the
+    // player ever saves a profile, or the "never played" sentinel of 100000
+    // for bestTime), so they can legitimately be larger than one round's cap
+    // — these ceilings just block obviously-injected values.
     && data.score is number
     && data.score >= 0
     && data.score <= 100000
-    && data.time is number
-    && data.time >= 0
-    && data.time <= 100000
+    && data.bestTime is number
+    && data.bestTime >= 0
+    && data.bestTime <= 100000
     && data.createdAt == request.time
     && data.updatedAt == request.time;
 }
@@ -84,22 +142,83 @@ function isValidProfileUpdate(newData, oldData) {
     && newData.avatar is string
     && newData.avatar.matches('^assets/images/leaderboard/avatar-(male|female|neutral)-[0-9]+\\.png$')
     && newData.score == oldData.score
-    && newData.time == oldData.time
+    && newData.bestTime == oldData.bestTime
     && newData.createdAt == oldData.createdAt
     && newData.updatedAt == request.time;
 }
 
 function isValidStatsIncrement(newData, oldData) {
-  return newData.diff(oldData).affectedKeys().hasOnly(['score', 'time', 'updatedAt'])
+  return newData.diff(oldData).affectedKeys().hasOnly(['score', 'bestTime', 'updatedAt'])
     && newData.score is number
     && newData.score >= oldData.score
     && newData.score - oldData.score <= 100
-    && newData.time is number
-    && newData.time >= oldData.time
-    && newData.time - oldData.time <= 60
+    // bestTime is a running minimum over real single rounds (each capped at
+    // GAME_DURATION = 60s), so it can only hold steady or drop, and can
+    // never legitimately land outside a single round's 0-60s range.
+    && newData.bestTime is number
+    && newData.bestTime <= oldData.bestTime
+    && newData.bestTime >= 0
+    && newData.bestTime <= 60
     && newData.name == oldData.name
     && newData.gender == oldData.gender
     && newData.avatar == oldData.avatar
     && newData.createdAt == oldData.createdAt
+    && newData.updatedAt == request.time;
+}
+
+/* ---------- /dailyLeaderboard/{istDate}/players (daily) ---------- */
+
+function isValidDailyCreate(data) {
+  return data.keys().hasOnly(['name', 'gender', 'avatar', 'bestScore', 'bestTime', 'playsUsed', 'createdAt', 'updatedAt'])
+    && data.name is string
+    && data.name.size() > 0
+    && data.name.size() <= 24
+    && data.gender in ['male', 'female', 'unspecified']
+    && data.avatar is string
+    && data.avatar.matches('^assets/images/leaderboard/avatar-(male|female|neutral)-[0-9]+\\.png$')
+    // A daily doc is only ever created from a real, single finished round,
+    // so bestScore/bestTime are tightly bounded by that one round's rules
+    // (10 arrows x 10 points = 100 max score, 60s fixed timer) rather than
+    // the looser lifetime ceilings above.
+    && data.bestScore is number
+    && data.bestScore >= 0
+    && data.bestScore <= 100
+    && data.bestTime is number
+    && data.bestTime >= 0
+    && data.bestTime <= 60
+    // The doc's creation IS this player's first play of the day.
+    && data.playsUsed == 1
+    && data.createdAt == request.time
+    && data.updatedAt == request.time;
+}
+
+function isValidDailyUpdate(newData, oldData) {
+  return newData.diff(oldData).affectedKeys().hasOnly(['name', 'gender', 'avatar', 'bestScore', 'bestTime', 'playsUsed', 'updatedAt'])
+    && newData.name is string
+    && newData.name.size() > 0
+    && newData.name.size() <= 24
+    && newData.gender in ['male', 'female', 'unspecified']
+    && newData.avatar is string
+    && newData.avatar.matches('^assets/images/leaderboard/avatar-(male|female|neutral)-[0-9]+\\.png$')
+    && newData.bestScore is number
+    && newData.bestScore >= 0
+    && newData.bestScore <= 100
+    && newData.bestTime is number
+    && newData.bestTime >= 0
+    && newData.bestTime <= 60
+    // A round only ever moves bestScore/bestTime together, and only in one
+    // of two legitimate ways: this round's score matched today's existing
+    // best but was faster (score unchanged, time can only drop), or this
+    // round's score beat it outright (score strictly higher, in which case
+    // that round's time — whatever it was — replaces bestTime too).
+    && (
+      (newData.bestScore == oldData.bestScore && newData.bestTime <= oldData.bestTime)
+      || newData.bestScore > oldData.bestScore
+    )
+    // This is the actual daily-play-cap enforcement: every write must be
+    // exactly one more recorded play than before, and can never push the
+    // count past the shared cap.
+    && newData.playsUsed == oldData.playsUsed + 1
+    && newData.playsUsed <= MAX_PLAYS_PER_DAY()
     && newData.updatedAt == request.time;
 }

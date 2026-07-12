@@ -1,4 +1,5 @@
-import { incrementPlayerStats } from "./firebase-init.js";
+import { incrementPlayerStats, recordDailyRound } from "./firebase-init.js";
+import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_PLAYS_PER_DAY } from "./plays.js";
 
 (() => {
   "use strict";
@@ -48,7 +49,12 @@ import { incrementPlayerStats } from "./firebase-init.js";
   // "Your Total Score" figure on the leaderboard screen is accurate the
   // moment they land there for the very first time.
   const LIFETIME_SCORE_KEY = "meeshoArcheryLifetimeScore";
-  const LIFETIME_TIME_KEY = "meeshoArcheryLifetimeTime";
+  // Fastest single round ever played on this device — a running minimum,
+  // not a sum, matching the Firestore lifetime schema's bestTime field (see
+  // js/firebase-init.js). Replaces the old cumulative "lifetime time"
+  // figure, which the leaderboard's lifetime tie-break no longer uses.
+  const LIFETIME_BEST_TIME_KEY = "meeshoArcheryLifetimeBestTime";
+  const NO_BEST_TIME_YET = 100000; // sentinel for "no round played yet" — mirrors firebase-init.js
   // Matches PROFILE_KEY in js/leaderboard.js — presence of this key is what
   // tells us the player has already unlocked the leaderboard, so it's safe
   // (and meaningful) to push this round's stats to Firestore.
@@ -143,8 +149,11 @@ import { incrementPlayerStats } from "./firebase-init.js";
   const gameOverSticker = document.getElementById("game-over-sticker");
   const gameOverStickerImg = document.getElementById("game-over-sticker-img");
   const gameOverEmoji = document.getElementById("game-over-emoji");
+  const gameOverScoreLine = document.getElementById("game-over-score-line");
+  const gameOverBlockedMessage = document.getElementById("game-over-blocked-message");
   const finalScoreEl = document.getElementById("final-score");
   const playAgainBtn = document.getElementById("play-again-btn");
+  const playAgainChipText = document.getElementById("game-over-plays-chip-text");
   const leaderboardBtn = document.getElementById("leaderboard-btn");
   const rewardsBtn = document.getElementById("rewards-btn");
   const backBtn = document.getElementById("back-btn");
@@ -863,16 +872,20 @@ import { incrementPlayerStats } from "./firebase-init.js";
       finalReason = "highscore";
     }
 
-    // Roll this round's score/time into the device's lifetime totals — the
-    // leaderboard's "Your Total Score" figure and its ranking basis. This
-    // happens for every round regardless of whether the player has unlocked
-    // the leaderboard yet, so the number is already accurate the first time
-    // they check.
+    // Roll this round's score into the device's lifetime cumulative total —
+    // the leaderboard's "Your Total Score" figure and the primary ranking
+    // basis on the Lifetime tab. This happens for every round regardless of
+    // whether the player has unlocked the leaderboard yet, so the number is
+    // already accurate the first time they check.
     const elapsedSeconds = GAME_DURATION - timeLeft;
     const lifetimeScore = Number(localStorage.getItem(LIFETIME_SCORE_KEY) || 0) + score;
-    const lifetimeTime = Number(localStorage.getItem(LIFETIME_TIME_KEY) || 0) + elapsedSeconds;
     localStorage.setItem(LIFETIME_SCORE_KEY, String(lifetimeScore));
-    localStorage.setItem(LIFETIME_TIME_KEY, String(lifetimeTime));
+
+    // bestTime is a running minimum across every round ever played (not a
+    // sum) — mirrors the Firestore lifetime schema's tiebreak field.
+    const previousBestTime = Number(localStorage.getItem(LIFETIME_BEST_TIME_KEY) || NO_BEST_TIME_YET);
+    const lifetimeBestTime = Math.min(previousBestTime, elapsedSeconds);
+    localStorage.setItem(LIFETIME_BEST_TIME_KEY, String(lifetimeBestTime));
 
     // Only push to Firestore once the player has actually saved a
     // leaderboard profile (i.e. they have a doc there to increment) —
@@ -880,12 +893,25 @@ import { incrementPlayerStats } from "./firebase-init.js";
     // until they do.
     if (localStorage.getItem(PROFILE_KEY)) {
       incrementPlayerStats(score, elapsedSeconds).catch(() => {});
+      const profile = getStoredProfile();
+      recordDailyRound({
+        istDate: getIstDateString(),
+        score,
+        timeSeconds: elapsedSeconds,
+        name: profile && profile.name,
+        gender: profile && profile.gender,
+        avatar: profile && profile.avatar,
+      }).catch(() => {});
     }
 
     const config = END_SCREENS[finalReason] || END_SCREENS[reason] || END_SCREENS.timer;
 
     gameOverOverlay.dataset.reason = finalReason;
     gameOverTitle.textContent = config.title || message || "Game Over";
+    gameOverSticker.hidden = false;
+    gameOverEmoji.hidden = false;
+    gameOverScoreLine.hidden = false;
+    gameOverBlockedMessage.hidden = true;
     gameOverStickerImg.src = config.sticker;
     gameOverStickerImg.alt = config.alt || "";
     gameOverStickerImg.style.transform = config.rotate ? `rotate(${config.rotate}deg)` : "none";
@@ -893,6 +919,21 @@ import { incrementPlayerStats } from "./firebase-init.js";
     gameOverEmoji.textContent = config.emoji;
     finalScoreEl.textContent = String(score);
     gameOverOverlay.hidden = false;
+
+    // The play just consumed (see attemptStartRound()) may have been today's
+    // last one — reflect that immediately on the Play Again button/chip
+    // rather than waiting for the player to tap it and find out.
+    renderPlaysGate(playAgainChipText, playAgainBtn);
+  }
+
+  function getStoredProfile() {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (err) {
+      return null;
+    }
   }
 
   function resetGame() {
@@ -924,6 +965,38 @@ import { incrementPlayerStats } from "./firebase-init.js";
     maybeShowDrawHint();
   }
 
+  // Shows the game-over overlay in its "no plays left today" shape instead
+  // of starting a round: no score/sticker/emoji (nothing was actually
+  // played this visit), just the message + a disabled Play Again button
+  // with the "Come back tomorrow!" chip. Used both when the page loads
+  // directly with zero plays left, and reused implicitly right after the
+  // last play of the day finishes a real round (endGame() already renders
+  // the same disabled chip/button on its own overlay content).
+  function showPlaysExhaustedBlock() {
+    gameOverOverlay.dataset.reason = "exhausted";
+    gameOverTitle.textContent = "Come back tomorrow!";
+    gameOverSticker.hidden = true;
+    gameOverEmoji.hidden = true;
+    gameOverScoreLine.hidden = true;
+    gameOverBlockedMessage.hidden = false;
+    gameOverBlockedMessage.textContent = `You've used all ${MAX_PLAYS_PER_DAY} plays for today. Come back tomorrow for more!`;
+    gameOverOverlay.hidden = false;
+    renderPlaysGate(playAgainChipText, playAgainBtn);
+  }
+
+  // Gate for every "start a round" entry point (initial page load AND the
+  // Play Again button) — consumes one of today's plays and starts the round
+  // if any are left, otherwise shows the exhausted block instead.
+  function attemptStartRound() {
+    if (!hasPlaysLeftToday()) {
+      showPlaysExhaustedBlock();
+      return;
+    }
+    consumePlay();
+    renderPlaysGate(playAgainChipText, playAgainBtn);
+    resetGame();
+  }
+
   /* ---------- Wire up ---------- */
 
   nockedArrow.addEventListener("pointerdown", onPointerDown);
@@ -931,7 +1004,7 @@ import { incrementPlayerStats } from "./firebase-init.js";
   nockedArrow.addEventListener("pointerup", onPointerUp);
   nockedArrow.addEventListener("pointercancel", onPointerUp);
 
-  playAgainBtn.addEventListener("click", resetGame);
+  playAgainBtn.addEventListener("click", attemptStartRound);
   leaderboardBtn.addEventListener("click", () => {
     window.location.href = "leaderboard.html";
   });
@@ -967,5 +1040,5 @@ import { incrementPlayerStats } from "./firebase-init.js";
     { passive: false }
   );
 
-  resetGame();
+  attemptStartRound();
 })();

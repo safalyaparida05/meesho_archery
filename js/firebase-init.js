@@ -23,7 +23,14 @@ import {
   collection,
   getDocs,
   serverTimestamp,
+  runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+import { MAX_PLAYS_PER_DAY } from "./plays.js";
+
+// Re-exported so callers that already import from firebase-init.js (the
+// leaderboard/daily-write surface) don't also need a separate import of
+// js/plays.js just for this one constant.
+export { MAX_PLAYS_PER_DAY };
 
 const firebaseConfig = {
   apiKey: "AIzaSyAirBWzcDj2ct3cCdcirxommFPWiIQSm5I",
@@ -39,7 +46,19 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const PLAYERS_COLLECTION = "players";
+// Daily leaderboard docs live at dailyLeaderboard/{istDate}/players/{playerId}
+// — a subcollection per IST day rather than a flat collection with a
+// composite id, so Firestore rules can bind istDate/playerId straight from
+// the path instead of parsing them back out of a string. Each doc also
+// doubles as that player's play-count audit trail for the day (playsUsed).
+const DAILY_COLLECTION = "dailyLeaderboard";
+const DAILY_SUBCOLLECTION = "players";
 const PLAYER_ID_KEY = "meeshoArcheryPlayerId";
+// Sentinel for "no round played yet" in a numeric bestTime field — Firestore
+// rules need a number (not null) to validate against, so a fresh profile
+// starts at this generous ceiling (matches the existing cap used elsewhere
+// in firestore.rules) rather than a real elapsed time.
+const NO_BEST_TIME_YET = 100000;
 
 /**
  * Every device gets a stable random player id the first time it's needed,
@@ -61,9 +80,10 @@ export function getOrCreatePlayerId() {
 /**
  * Creates (or updates) this device's player document with profile info —
  * called once, right after the player fills in the name/gender form and
- * taps Save. `profile` is { name, gender, avatar, score, time }; score/time
- * are the lifetime totals already accumulated locally so the very first
- * sync doesn't start the player back at zero.
+ * taps Save. `profile` is { name, gender, avatar, score, bestTime }; score is
+ * the lifetime cumulative total already accumulated locally, and bestTime is
+ * the fastest single round already played locally (or the "never played"
+ * sentinel), so the very first sync doesn't start the player back at zero.
  */
 export async function saveProfileAndSync(profile) {
   const playerId = getOrCreatePlayerId();
@@ -83,7 +103,7 @@ export async function saveProfileAndSync(profile) {
       gender: profile.gender,
       avatar: profile.avatar,
       score: profile.score || 0,
-      time: profile.time || 0,
+      bestTime: typeof profile.bestTime === "number" ? profile.bestTime : NO_BEST_TIME_YET,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -93,19 +113,30 @@ export async function saveProfileAndSync(profile) {
 }
 
 /**
- * Adds this round's score/time onto the player's Firestore totals. Only
- * meaningful once a profile has been saved (i.e. the player has a Firestore
- * doc) — callers should check for a saved local profile before calling this,
- * and it fails soft (logs + resolves) if the doc doesn't exist yet.
+ * Adds this round's score onto the player's lifetime cumulative total, and
+ * lowers bestTime if this round beat it. Only meaningful once a profile has
+ * been saved (i.e. the player has a Firestore doc) — callers should check
+ * for a saved local profile before calling this, and it fails soft (logs +
+ * resolves) if the doc doesn't exist yet.
+ *
+ * This has to be a transaction rather than a plain increment(): bestTime is
+ * a running minimum, not a sum, so the new value depends on reading the
+ * current value first.
  */
 export async function incrementPlayerStats(roundScore, roundTimeSeconds) {
   const playerId = getOrCreatePlayerId();
   const ref = doc(db, PLAYERS_COLLECTION, playerId);
   try {
-    await updateDoc(ref, {
-      score: increment(roundScore),
-      time: increment(roundTimeSeconds),
-      updatedAt: serverTimestamp(),
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const currentBestTime = typeof data.bestTime === "number" ? data.bestTime : NO_BEST_TIME_YET;
+      tx.update(ref, {
+        score: increment(roundScore),
+        bestTime: Math.min(currentBestTime, roundTimeSeconds),
+        updatedAt: serverTimestamp(),
+      });
     });
   } catch (err) {
     console.warn("[meesho-archery] incrementPlayerStats skipped:", err && err.message);
@@ -140,7 +171,8 @@ export async function isNameTaken(name, excludePlayerId) {
 
 /**
  * Fetches every player and sorts by the ranking rule the user specified:
- * highest lifetime score first, then lowest lifetime time as the tiebreak.
+ * highest lifetime cumulative score first, then fastest best-ever single
+ * round (lowest bestTime) as the tiebreak.
  */
 export async function fetchLeaderboard() {
   const snap = await getDocs(collection(db, PLAYERS_COLLECTION));
@@ -153,8 +185,93 @@ export async function fetchLeaderboard() {
     const scoreA = a.score || 0;
     const scoreB = b.score || 0;
     if (scoreB !== scoreA) return scoreB - scoreA;
-    const timeA = a.time || 0;
-    const timeB = b.time || 0;
+    const bestTimeA = typeof a.bestTime === "number" ? a.bestTime : NO_BEST_TIME_YET;
+    const bestTimeB = typeof b.bestTime === "number" ? b.bestTime : NO_BEST_TIME_YET;
+    return bestTimeA - bestTimeB;
+  });
+
+  return players;
+}
+
+/* ---------- Daily leaderboard + play cap ---------- */
+
+/**
+ * Records one round against today's IST-date daily doc for this player —
+ * creating it on the player's first play of the day, or updating it on
+ * later plays. Unlike the lifetime collection, this is NOT a running sum:
+ * bestScore/bestTime only move if this round actually beat the existing
+ * value (per the "one row per player per day = their best score that day"
+ * rule), and playsUsed always increments by exactly 1 per call.
+ *
+ * A transaction is required (not a plain update) because bestScore/bestTime
+ * both depend on comparing against the current stored value, and
+ * playsUsed's new value depends on the current count.
+ *
+ * `profile` is optional {name, gender, avatar} — passed so the daily doc has
+ * enough info to render a row without a second lookup into /players; omitted
+ * (or partial) if the player hasn't saved a profile yet, though callers
+ * should generally only invoke this once a profile exists.
+ */
+export async function recordDailyRound({ istDate, score, timeSeconds, name, gender, avatar }) {
+  const playerId = getOrCreatePlayerId();
+  const ref = doc(db, DAILY_COLLECTION, istDate, DAILY_SUBCOLLECTION, playerId);
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) {
+        tx.set(ref, {
+          name: name || "Player",
+          gender: gender || "unspecified",
+          avatar: avatar || "",
+          bestScore: score,
+          bestTime: timeSeconds,
+          playsUsed: 1,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        return;
+      }
+      const data = snap.data();
+      const currentBestScore = typeof data.bestScore === "number" ? data.bestScore : 0;
+      const currentBestTime = typeof data.bestTime === "number" ? data.bestTime : NO_BEST_TIME_YET;
+      const currentPlaysUsed = typeof data.playsUsed === "number" ? data.playsUsed : 0;
+      // "Beats today's best" = higher score, or same score with a faster
+      // time — matches the tie-break rule used for ranking the tab itself.
+      const beatsBest =
+        score > currentBestScore || (score === currentBestScore && timeSeconds < currentBestTime);
+      tx.update(ref, {
+        name: name || data.name,
+        gender: gender || data.gender,
+        avatar: avatar || data.avatar,
+        bestScore: beatsBest ? score : currentBestScore,
+        bestTime: beatsBest ? timeSeconds : currentBestTime,
+        playsUsed: Math.min(MAX_PLAYS_PER_DAY, currentPlaysUsed + 1),
+        updatedAt: serverTimestamp(),
+      });
+    });
+  } catch (err) {
+    console.warn("[meesho-archery] recordDailyRound skipped:", err && err.message);
+  }
+}
+
+/**
+ * Fetches every player's row for one IST date and sorts by the same rule as
+ * the daily tab: highest bestScore that day first, then fastest bestTime
+ * that day as the tiebreak.
+ */
+export async function fetchDailyLeaderboard(istDate) {
+  const snap = await getDocs(collection(db, DAILY_COLLECTION, istDate, DAILY_SUBCOLLECTION));
+  const players = [];
+  snap.forEach((docSnap) => {
+    players.push({ id: docSnap.id, ...docSnap.data() });
+  });
+
+  players.sort((a, b) => {
+    const scoreA = a.bestScore || 0;
+    const scoreB = b.bestScore || 0;
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    const timeA = typeof a.bestTime === "number" ? a.bestTime : NO_BEST_TIME_YET;
+    const timeB = typeof b.bestTime === "number" ? b.bestTime : NO_BEST_TIME_YET;
     return timeA - timeB;
   });
 

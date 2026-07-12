@@ -29,7 +29,14 @@
 
     <div class="leaderboard-hero">
       <p class="leaderboard-hero__label">Leaderboard</p>
-      <p class="leaderboard-hero__score">Your Total Score : <span id="total-score">0</span></p>
+
+      <!-- Figma node 135:1642 — Daily resets every IST midnight (see
+           js/plays.js for the shared IST-day helper), Lifetime is the
+           existing cumulative all-time ranking. -->
+      <div class="lb-tabs" id="lb-tabs" role="tablist">
+        <button class="lb-tab lb-tab--left is-active" id="lb-tab-daily" type="button" data-tab="daily" role="tab" aria-selected="true">Daily</button>
+        <button class="lb-tab lb-tab--right" id="lb-tab-lifetime" type="button" data-tab="lifetime" role="tab" aria-selected="false">Lifetime</button>
+      </div>
     </div>
 
     <div class="leaderboard-stack" id="leaderboard-stack">
@@ -89,7 +96,12 @@
            84:1452 "Play Again Button" inside the unlocked leaderboard,
            83:1347). -->
       <div class="leaderboard-unlocked-actions" id="leaderboard-unlocked-actions" hidden>
-        <button class="btn btn--primary" id="play-again-lb-btn" type="button">Play Again</button>
+        <div class="play-gate">
+          <div class="plays-chip" id="lb-plays-chip">
+            <span class="plays-chip__text" id="lb-plays-chip-text"></span>
+          </div>
+          <button class="btn btn--primary" id="play-again-lb-btn" type="button">Play Again</button>
+        </div>
       </div>
     </div>
 

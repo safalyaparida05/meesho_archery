@@ -1,9 +1,20 @@
-import { saveProfileAndSync, fetchLeaderboard, getOrCreatePlayerId, isNameTaken } from "./firebase-init.js";
+import {
+  saveProfileAndSync,
+  fetchLeaderboard,
+  fetchDailyLeaderboard,
+  getOrCreatePlayerId,
+  isNameTaken,
+} from "./firebase-init.js";
+import { getIstDateString, renderPlaysGate } from "./plays.js";
 
 /* ---------- Storage keys (must match js/game.js) ---------- */
 
 const LIFETIME_SCORE_KEY = "meeshoArcheryLifetimeScore";
-const LIFETIME_TIME_KEY = "meeshoArcheryLifetimeTime";
+// Fastest single round ever played on this device — a running minimum, not
+// a sum. Replaces the old cumulative "lifetime time" figure; see the same
+// key/comment in js/game.js.
+const LIFETIME_BEST_TIME_KEY = "meeshoArcheryLifetimeBestTime";
+const NO_BEST_TIME_YET = 100000; // sentinel for "no round played yet" — mirrors firebase-init.js
 const PROFILE_KEY = "meeshoArcheryProfile";
 
 /* ---------- Avatar pools ---------- */
@@ -59,7 +70,8 @@ const MOCK_ROWS = [
 
 const backBtn = document.getElementById("back-btn");
 const shareBtn = document.getElementById("share-btn");
-const totalScoreEl = document.getElementById("total-score");
+const tabDailyBtn = document.getElementById("lb-tab-daily");
+const tabLifetimeBtn = document.getElementById("lb-tab-lifetime");
 const leaderboardCard = document.getElementById("leaderboard-card");
 const rowsWrap = document.getElementById("lb-rows-wrap");
 const rowsEl = document.getElementById("lb-rows");
@@ -68,6 +80,7 @@ const lockPill = document.getElementById("lb-lock-pill");
 const leaderboardFade = document.getElementById("leaderboard-fade");
 const unlockedActions = document.getElementById("leaderboard-unlocked-actions");
 const playAgainBtn = document.getElementById("play-again-lb-btn");
+const playAgainChipText = document.getElementById("lb-plays-chip-text");
 const nameDetailsCard = document.getElementById("name-details-card");
 const nameInput = document.getElementById("name-input");
 const saveProfileBtn = document.getElementById("save-profile-btn");
@@ -76,6 +89,9 @@ const genderChips = Array.from(document.querySelectorAll(".gender-chip"));
 const toastEl = document.getElementById("toast");
 
 let selectedGender = null;
+// "daily" or "lifetime" — which tab's data is currently rendered. Daily
+// starts active per the feature spec's TAB 1/TAB 2 ordering.
+let activeTab = "daily";
 
 /* ---------- Helpers ---------- */
 
@@ -83,8 +99,8 @@ function getLifetimeScore() {
   return Number(localStorage.getItem(LIFETIME_SCORE_KEY) || 0);
 }
 
-function getLifetimeTime() {
-  return Number(localStorage.getItem(LIFETIME_TIME_KEY) || 0);
+function getLifetimeBestTime() {
+  return Number(localStorage.getItem(LIFETIME_BEST_TIME_KEY) || NO_BEST_TIME_YET);
 }
 
 function getProfile() {
@@ -169,6 +185,29 @@ function renderLockedState() {
   renderRows(MOCK_ROWS);
 }
 
+/* ---------- Tabs ---------- */
+
+function setActiveTab(tab) {
+  if (tab === activeTab) return;
+  activeTab = tab;
+  tabDailyBtn.classList.toggle("is-active", tab === "daily");
+  tabDailyBtn.setAttribute("aria-selected", String(tab === "daily"));
+  tabLifetimeBtn.classList.toggle("is-active", tab === "lifetime");
+  tabLifetimeBtn.setAttribute("aria-selected", String(tab === "lifetime"));
+  refreshActiveTab();
+}
+
+function refreshActiveTab() {
+  if (getProfile()) {
+    renderUnlockedState();
+  } else {
+    renderLockedState();
+  }
+}
+
+tabDailyBtn.addEventListener("click", () => setActiveTab("daily"));
+tabLifetimeBtn.addEventListener("click", () => setActiveTab("lifetime"));
+
 function setSelectedGender(gender) {
   selectedGender = gender;
   genderChips.forEach((chip) => {
@@ -220,7 +259,7 @@ saveProfileBtn.addEventListener("click", async () => {
     await saveProfileAndSync({
       ...profile,
       score: getLifetimeScore(),
-      time: getLifetimeTime(),
+      bestTime: getLifetimeBestTime(),
     });
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     await renderUnlockedState();
@@ -243,6 +282,7 @@ async function renderUnlockedState() {
   leaderboardFade.classList.remove("leaderboard-fade--locked");
   nameDetailsCard.hidden = true;
   unlockedActions.hidden = false;
+  renderPlaysGate(playAgainChipText, playAgainBtn);
 
   renderRows([]); // clear immediately, then fill in once the fetch resolves
   rowsEl.innerHTML = `<li class="lb-empty">Loading rankings...</li>`;
@@ -250,12 +290,34 @@ async function renderUnlockedState() {
   const profile = getProfile();
   const myPlayerId = getOrCreatePlayerId();
 
+  if (activeTab === "daily") {
+    try {
+      const players = await fetchDailyLeaderboard(getIstDateString());
+      const rows = players.map((player) => ({
+        name: player.name || "Player",
+        score: player.bestScore || 0,
+        time: player.bestTime || 0,
+        avatar: player.avatar || pickRandomAvatar(player.gender),
+        isMe: player.id === myPlayerId,
+      }));
+      renderRows(rows);
+    } catch (err) {
+      console.warn("[meesho-archery] fetchDailyLeaderboard failed:", err && err.message);
+      // Fail soft: there's no reliable local "today's best score" to fall
+      // back on (that's tracked server-side only), so just show an empty
+      // board rather than a stale/wrong number.
+      renderRows([]);
+      showToast("Couldn't load today's leaderboard");
+    }
+    return;
+  }
+
   try {
     const players = await fetchLeaderboard();
     const rows = players.map((player) => ({
       name: player.name || "Player",
       score: player.score || 0,
-      time: player.time || 0,
+      time: typeof player.bestTime === "number" ? player.bestTime : NO_BEST_TIME_YET,
       avatar: player.avatar || pickRandomAvatar(player.gender),
       isMe: player.id === myPlayerId,
     }));
@@ -269,7 +331,7 @@ async function renderUnlockedState() {
         {
           name: profile.name,
           score: getLifetimeScore(),
-          time: getLifetimeTime(),
+          time: getLifetimeBestTime(),
           avatar: profile.avatar,
           isMe: true,
         },
@@ -284,8 +346,6 @@ async function renderUnlockedState() {
 /* ---------- Init ---------- */
 
 function init() {
-  totalScoreEl.textContent = getLifetimeScore().toLocaleString();
-
   const profile = getProfile();
   if (profile) {
     renderUnlockedState();

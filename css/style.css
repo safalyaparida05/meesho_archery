@@ -196,6 +196,77 @@ img {
   filter: brightness(0.95);
 }
 
+/* Daily-play-limit-exhausted state (Figma node 131:1467) — same "Start
+   Game"/"Play Again" label, but greyed out and inert once the day's plays
+   are used up. Uses the native disabled attribute rather than a class so
+   the button is also actually unclickable, not just visually dimmed. */
+.btn:disabled {
+  border-color: #000000;
+  color: #9d9d9d;
+  background-image: linear-gradient(179.5deg, rgb(94, 94, 94) 1.4%, rgb(58, 58, 58) 98.4%);
+  cursor: not-allowed;
+}
+
+.btn:disabled:active {
+  transform: none;
+  filter: none;
+}
+
+/* ---------- Shared "plays left today" chip ---------- */
+/* Sits half inside / half outside the top edge of whichever "start a round"
+   button it's paired with (Start Game on landing.html, Play Again on the
+   game-over overlay and on leaderboard.html) — see Figma nodes 131:1505
+   ("Daily N chances"), 131:1429 ("N chances left") and 131:1467 ("Come back
+   tomorrow"). The wrapping element must be `position: relative` with the
+   button as its only other child for the overlap math below to line up. */
+.play-gate {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.plays-chip {
+  position: absolute;
+  top: -12px; /* half the chip's own height, so its vertical center sits on the button's top edge */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 14px;
+  border: 1px solid var(--color-purple-light);
+  border-radius: 999px;
+  white-space: nowrap;
+  pointer-events: none;
+  /* Dark radial gradient from the Figma fill, approximated as a plain
+     radial-gradient (the source is a skewed-matrix SVG gradient) since the
+     chip's width varies with its text and a fixed-size SVG background
+     wouldn't stretch correctly. */
+  background: radial-gradient(
+    100% 140% at 50% 100%,
+    rgba(81, 80, 79, 1) 0%,
+    rgba(61, 60, 59, 1) 25%,
+    rgba(41, 40, 39, 1) 50%,
+    rgba(20, 20, 20, 1) 75%,
+    rgba(10, 10, 10, 1) 87.5%,
+    rgba(0, 0, 0, 1) 100%
+  );
+}
+
+.plays-chip__text {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.12px;
+  color: #f9e1c1;
+  line-height: 1;
+}
+
 .link-btn {
   font-size: clamp(11px, 3vw, 13px);
   font-weight: 500;

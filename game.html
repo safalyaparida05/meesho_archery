@@ -74,12 +74,18 @@
           <div class="game-over-sticker" id="game-over-sticker">
             <img id="game-over-sticker-img" src="" alt="" />
           </div>
-          <p class="game-over-score">Your Score : <span id="final-score">0</span></p>
+          <p class="game-over-score" id="game-over-score-line">Your Score : <span id="final-score">0</span></p>
+          <p class="game-over-blocked-message" id="game-over-blocked-message" hidden></p>
           <p class="game-over-emoji" id="game-over-emoji">😔</p>
         </div>
 
         <div class="game-over-actions">
-          <button class="btn btn--primary" id="play-again-btn" type="button">Play Again</button>
+          <div class="play-gate">
+            <div class="plays-chip" id="game-over-plays-chip">
+              <span class="plays-chip__text" id="game-over-plays-chip-text"></span>
+            </div>
+            <button class="btn btn--primary" id="play-again-btn" type="button">Play Again</button>
+          </div>
           <button class="btn btn--primary" id="leaderboard-btn" type="button">Leaderboard</button>
           <button class="link-btn" id="rewards-btn" type="button">Rewards</button>
         </div>

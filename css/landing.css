@@ -74,6 +74,12 @@
   z-index: 2;
 }
 
+/* Headroom for the plays-left chip's upward overlap (see .plays-chip in
+   css/style.css) so it doesn't collide with the hero art above it. */
+.landing-actions .play-gate {
+  margin-top: 12px;
+}
+
 /* ---------- Small-height phones: keep hero from disappearing ---------- */
 @media (max-height: 640px) {
   .landing-stage {

@@ -1,4 +1,18 @@
-document.getElementById("start-game-btn").addEventListener("click", () => {
+import { hasPlaysLeftToday, renderPlaysGate } from "./plays.js";
+
+const startGameBtn = document.getElementById("start-game-btn");
+const landingPlaysChipText = document.getElementById("landing-plays-chip-text");
+
+renderPlaysGate(landingPlaysChipText, startGameBtn);
+
+startGameBtn.addEventListener("click", () => {
+  // Defensive re-check: plays.js is IST-day-scoped, so a tab left open
+  // across midnight (or another tab used up the last play) could make the
+  // button's disabled state stale by the time it's actually clicked.
+  if (!hasPlaysLeftToday()) {
+    renderPlaysGate(landingPlaysChipText, startGameBtn);
+    return;
+  }
   window.location.href = "game.html";
 });
 
