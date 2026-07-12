@@ -10,11 +10,7 @@ import { getIstDateString, renderPlaysGate } from "./plays.js";
 /* ---------- Storage keys (must match js/game.js) ---------- */
 
 const LIFETIME_SCORE_KEY = "meeshoArcheryLifetimeScore";
-// Fastest single round ever played on this device — a running minimum, not
-// a sum. Replaces the old cumulative "lifetime time" figure; see the same
-// key/comment in js/game.js.
-const LIFETIME_BEST_TIME_KEY = "meeshoArcheryLifetimeBestTime";
-const NO_BEST_TIME_YET = 100000; // sentinel for "no round played yet" — mirrors firebase-init.js
+const LIFETIME_TIME_KEY = "meeshoArcheryLifetimeTime";
 const PROFILE_KEY = "meeshoArcheryProfile";
 
 /* ---------- Avatar pools ---------- */
@@ -99,8 +95,8 @@ function getLifetimeScore() {
   return Number(localStorage.getItem(LIFETIME_SCORE_KEY) || 0);
 }
 
-function getLifetimeBestTime() {
-  return Number(localStorage.getItem(LIFETIME_BEST_TIME_KEY) || NO_BEST_TIME_YET);
+function getLifetimeTime() {
+  return Number(localStorage.getItem(LIFETIME_TIME_KEY) || 0);
 }
 
 function getProfile() {
@@ -259,7 +255,7 @@ saveProfileBtn.addEventListener("click", async () => {
     await saveProfileAndSync({
       ...profile,
       score: getLifetimeScore(),
-      bestTime: getLifetimeBestTime(),
+      time: getLifetimeTime(),
     });
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     await renderUnlockedState();
@@ -317,7 +313,7 @@ async function renderUnlockedState() {
     const rows = players.map((player) => ({
       name: player.name || "Player",
       score: player.score || 0,
-      time: typeof player.bestTime === "number" ? player.bestTime : NO_BEST_TIME_YET,
+      time: player.time || 0,
       avatar: player.avatar || pickRandomAvatar(player.gender),
       isMe: player.id === myPlayerId,
     }));
@@ -331,7 +327,7 @@ async function renderUnlockedState() {
         {
           name: profile.name,
           score: getLifetimeScore(),
-          time: getLifetimeBestTime(),
+          time: getLifetimeTime(),
           avatar: profile.avatar,
           isMe: true,
         },

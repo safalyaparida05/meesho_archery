@@ -49,12 +49,7 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
   // "Your Total Score" figure on the leaderboard screen is accurate the
   // moment they land there for the very first time.
   const LIFETIME_SCORE_KEY = "meeshoArcheryLifetimeScore";
-  // Fastest single round ever played on this device — a running minimum,
-  // not a sum, matching the Firestore lifetime schema's bestTime field (see
-  // js/firebase-init.js). Replaces the old cumulative "lifetime time"
-  // figure, which the leaderboard's lifetime tie-break no longer uses.
-  const LIFETIME_BEST_TIME_KEY = "meeshoArcheryLifetimeBestTime";
-  const NO_BEST_TIME_YET = 100000; // sentinel for "no round played yet" — mirrors firebase-init.js
+  const LIFETIME_TIME_KEY = "meeshoArcheryLifetimeTime";
   // Matches PROFILE_KEY in js/leaderboard.js — presence of this key is what
   // tells us the player has already unlocked the leaderboard, so it's safe
   // (and meaningful) to push this round's stats to Firestore.
@@ -872,20 +867,16 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
       finalReason = "highscore";
     }
 
-    // Roll this round's score into the device's lifetime cumulative total —
-    // the leaderboard's "Your Total Score" figure and the primary ranking
-    // basis on the Lifetime tab. This happens for every round regardless of
-    // whether the player has unlocked the leaderboard yet, so the number is
-    // already accurate the first time they check.
+    // Roll this round's score/time into the device's lifetime totals — the
+    // leaderboard's "Your Total Score" figure and its ranking basis. This
+    // happens for every round regardless of whether the player has unlocked
+    // the leaderboard yet, so the number is already accurate the first time
+    // they check.
     const elapsedSeconds = GAME_DURATION - timeLeft;
     const lifetimeScore = Number(localStorage.getItem(LIFETIME_SCORE_KEY) || 0) + score;
+    const lifetimeTime = Number(localStorage.getItem(LIFETIME_TIME_KEY) || 0) + elapsedSeconds;
     localStorage.setItem(LIFETIME_SCORE_KEY, String(lifetimeScore));
-
-    // bestTime is a running minimum across every round ever played (not a
-    // sum) — mirrors the Firestore lifetime schema's tiebreak field.
-    const previousBestTime = Number(localStorage.getItem(LIFETIME_BEST_TIME_KEY) || NO_BEST_TIME_YET);
-    const lifetimeBestTime = Math.min(previousBestTime, elapsedSeconds);
-    localStorage.setItem(LIFETIME_BEST_TIME_KEY, String(lifetimeBestTime));
+    localStorage.setItem(LIFETIME_TIME_KEY, String(lifetimeTime));
 
     // Only push to Firestore once the player has actually saved a
     // leaderboard profile (i.e. they have a doc there to increment) —

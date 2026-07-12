@@ -12,19 +12,20 @@ rules_version = '2';
 // hold on their own.
 //
 // ---------------------------------------------------------------------------
-// Collection 1: /players/{playerId} — LIFETIME totals, unchanged in shape
-// except `time` (cumulative) has been replaced by `bestTime` (the fastest
-// single round ever played), to match the Lifetime tab's tiebreak rule.
+// Collection 1: /players/{playerId} — LIFETIME totals (score and time are
+// both running sums across every round ever played on the device).
 //
 // Two legitimate write shapes come from js/firebase-init.js:
 //   1. saveProfileAndSync() — either creates the doc the first time (name,
-//      gender, avatar, score, bestTime, createdAt, updatedAt), or on later
-//      visits updates ONLY name/gender/avatar/updatedAt, leaving
-//      score/bestTime untouched.
-//   2. incrementPlayerStats() — updates ONLY score/bestTime/updatedAt, once
-//      per finished round: score only ever goes up (by at most one round's
-//      cap), bestTime only ever goes down or stays the same (it's a running
-//      minimum, not a sum).
+//      gender, avatar, score, time, createdAt, updatedAt), or on later
+//      visits updates ONLY name/gender/avatar/updatedAt, leaving score/time
+//      untouched.
+//   2. incrementPlayerStats() — updates ONLY score/time/updatedAt via
+//      increment(), once per finished round. A single round is capped at
+//      10 arrows x 10 points = 100 points, and the round timer is a fixed
+//      60s (see js/game.js: POINTS_PER_HIT, TOTAL_ARROWS, GAME_DURATION) —
+//      so a single increment can never legitimately raise score by more
+//      than 100 or time by more than 60.
 //
 // ---------------------------------------------------------------------------
 // Collection 2: /dailyLeaderboard/{istDate}/players/{playerId} — DAILY best
@@ -111,24 +112,23 @@ function isValidIstDate(istDate) {
 /* ---------- /players (lifetime) ---------- */
 
 function isValidNewPlayer(data) {
-  return data.keys().hasOnly(['name', 'gender', 'avatar', 'score', 'bestTime', 'createdAt', 'updatedAt'])
+  return data.keys().hasOnly(['name', 'gender', 'avatar', 'score', 'time', 'createdAt', 'updatedAt'])
     && data.name is string
     && data.name.size() > 0
     && data.name.size() <= 24
     && data.gender in ['male', 'female', 'unspecified']
     && data.avatar is string
     && data.avatar.matches('^assets/images/leaderboard/avatar-(male|female|neutral)-[0-9]+\\.png$')
-    // score/bestTime on create come from this device's already-accumulated
-    // localStorage lifetime state (possibly many rounds played before the
-    // player ever saves a profile, or the "never played" sentinel of 100000
-    // for bestTime), so they can legitimately be larger than one round's cap
-    // — these ceilings just block obviously-injected values.
+    // score/time on create come from this device's already-accumulated
+    // localStorage lifetime totals (possibly many rounds played before the
+    // player ever saves a profile), so they can legitimately be larger than
+    // one round's cap — these ceilings just block obviously-injected values.
     && data.score is number
     && data.score >= 0
     && data.score <= 100000
-    && data.bestTime is number
-    && data.bestTime >= 0
-    && data.bestTime <= 100000
+    && data.time is number
+    && data.time >= 0
+    && data.time <= 100000
     && data.createdAt == request.time
     && data.updatedAt == request.time;
 }
@@ -142,23 +142,19 @@ function isValidProfileUpdate(newData, oldData) {
     && newData.avatar is string
     && newData.avatar.matches('^assets/images/leaderboard/avatar-(male|female|neutral)-[0-9]+\\.png$')
     && newData.score == oldData.score
-    && newData.bestTime == oldData.bestTime
+    && newData.time == oldData.time
     && newData.createdAt == oldData.createdAt
     && newData.updatedAt == request.time;
 }
 
 function isValidStatsIncrement(newData, oldData) {
-  return newData.diff(oldData).affectedKeys().hasOnly(['score', 'bestTime', 'updatedAt'])
+  return newData.diff(oldData).affectedKeys().hasOnly(['score', 'time', 'updatedAt'])
     && newData.score is number
     && newData.score >= oldData.score
     && newData.score - oldData.score <= 100
-    // bestTime is a running minimum over real single rounds (each capped at
-    // GAME_DURATION = 60s), so it can only hold steady or drop, and can
-    // never legitimately land outside a single round's 0-60s range.
-    && newData.bestTime is number
-    && newData.bestTime <= oldData.bestTime
-    && newData.bestTime >= 0
-    && newData.bestTime <= 60
+    && newData.time is number
+    && newData.time >= oldData.time
+    && newData.time - oldData.time <= 60
     && newData.name == oldData.name
     && newData.gender == oldData.gender
     && newData.avatar == oldData.avatar

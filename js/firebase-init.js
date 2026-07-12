@@ -80,10 +80,9 @@ export function getOrCreatePlayerId() {
 /**
  * Creates (or updates) this device's player document with profile info —
  * called once, right after the player fills in the name/gender form and
- * taps Save. `profile` is { name, gender, avatar, score, bestTime }; score is
- * the lifetime cumulative total already accumulated locally, and bestTime is
- * the fastest single round already played locally (or the "never played"
- * sentinel), so the very first sync doesn't start the player back at zero.
+ * taps Save. `profile` is { name, gender, avatar, score, time }; score/time
+ * are the lifetime totals already accumulated locally so the very first
+ * sync doesn't start the player back at zero.
  */
 export async function saveProfileAndSync(profile) {
   const playerId = getOrCreatePlayerId();
@@ -103,7 +102,7 @@ export async function saveProfileAndSync(profile) {
       gender: profile.gender,
       avatar: profile.avatar,
       score: profile.score || 0,
-      bestTime: typeof profile.bestTime === "number" ? profile.bestTime : NO_BEST_TIME_YET,
+      time: profile.time || 0,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -113,30 +112,19 @@ export async function saveProfileAndSync(profile) {
 }
 
 /**
- * Adds this round's score onto the player's lifetime cumulative total, and
- * lowers bestTime if this round beat it. Only meaningful once a profile has
- * been saved (i.e. the player has a Firestore doc) — callers should check
- * for a saved local profile before calling this, and it fails soft (logs +
- * resolves) if the doc doesn't exist yet.
- *
- * This has to be a transaction rather than a plain increment(): bestTime is
- * a running minimum, not a sum, so the new value depends on reading the
- * current value first.
+ * Adds this round's score/time onto the player's Firestore totals. Only
+ * meaningful once a profile has been saved (i.e. the player has a Firestore
+ * doc) — callers should check for a saved local profile before calling this,
+ * and it fails soft (logs + resolves) if the doc doesn't exist yet.
  */
 export async function incrementPlayerStats(roundScore, roundTimeSeconds) {
   const playerId = getOrCreatePlayerId();
   const ref = doc(db, PLAYERS_COLLECTION, playerId);
   try {
-    await runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists()) return;
-      const data = snap.data();
-      const currentBestTime = typeof data.bestTime === "number" ? data.bestTime : NO_BEST_TIME_YET;
-      tx.update(ref, {
-        score: increment(roundScore),
-        bestTime: Math.min(currentBestTime, roundTimeSeconds),
-        updatedAt: serverTimestamp(),
-      });
+    await updateDoc(ref, {
+      score: increment(roundScore),
+      time: increment(roundTimeSeconds),
+      updatedAt: serverTimestamp(),
     });
   } catch (err) {
     console.warn("[meesho-archery] incrementPlayerStats skipped:", err && err.message);
@@ -171,8 +159,7 @@ export async function isNameTaken(name, excludePlayerId) {
 
 /**
  * Fetches every player and sorts by the ranking rule the user specified:
- * highest lifetime cumulative score first, then fastest best-ever single
- * round (lowest bestTime) as the tiebreak.
+ * highest lifetime score first, then lowest lifetime time as the tiebreak.
  */
 export async function fetchLeaderboard() {
   const snap = await getDocs(collection(db, PLAYERS_COLLECTION));
@@ -185,9 +172,9 @@ export async function fetchLeaderboard() {
     const scoreA = a.score || 0;
     const scoreB = b.score || 0;
     if (scoreB !== scoreA) return scoreB - scoreA;
-    const bestTimeA = typeof a.bestTime === "number" ? a.bestTime : NO_BEST_TIME_YET;
-    const bestTimeB = typeof b.bestTime === "number" ? b.bestTime : NO_BEST_TIME_YET;
-    return bestTimeA - bestTimeB;
+    const timeA = a.time || 0;
+    const timeB = b.time || 0;
+    return timeA - timeB;
   });
 
   return players;
