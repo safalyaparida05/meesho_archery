@@ -60,11 +60,16 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* index.html's mock home feed (see .home-screen in css/home.css) is the one
-   screen that's actually meant to scroll like a normal page — undo the
-   fixed-viewport lock above for it so its document-level scroll still works
-   on iOS/Android instead of being clipped. */
-body:has(.home-screen) {
+/* index.html's mock home feed (see .home-screen in css/home.css), plus
+   rewards.html and leaderboard.html (see .rewards-screen / .leaderboard-screen
+   below), are screens whose content height isn't guaranteed to fit one
+   viewport — the leaderboard card and reward tiers can run taller than a
+   short/small phone's screen. Undo the fixed-viewport lock above for them so
+   document-level scroll works on iOS/Android instead of silently clipping
+   whatever doesn't fit. game.html and landing.html deliberately keep the
+   fixed-viewport lock — they're designed to always fit in exactly one
+   screen. */
+body:has(.home-screen, .rewards-screen, .leaderboard-screen) {
   overflow-y: auto;
   overscroll-behavior-y: auto;
 }
@@ -97,6 +102,22 @@ img {
   overscroll-behavior: none;
   touch-action: none;
   background: var(--color-bg);
+}
+
+/* rewards.html and leaderboard.html: their content height depends on the
+   tier list / leaderboard card, which can run taller than a short phone's
+   viewport (e.g. the leaderboard card has a 460px min-height floor — see
+   .leaderboard-card in css/leaderboard.css — that alone can exceed the
+   space left after the header+hero on small screens). Let these two screens
+   grow past one viewport and scroll instead of clipping. Unlike
+   .home-screen (css/home.css), keep min-height:100vh/100dvh from .screen
+   above so the purple background still fills the whole screen when content
+   is short, and only grows taller when content actually needs it. */
+.rewards-screen,
+.leaderboard-screen {
+  overflow: visible;
+  overscroll-behavior: auto;
+  touch-action: pan-y;
 }
 
 .icon-btn {
