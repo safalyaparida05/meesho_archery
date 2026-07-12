@@ -190,7 +190,7 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
     if (!Ctx) return null;
     audioCtx = new Ctx();
     masterGain = audioCtx.createGain();
-    masterGain.gain.value = 0.6;
+    masterGain.gain.value = 0.85;
     masterGain.connect(audioCtx.destination);
     return audioCtx;
   }
@@ -226,7 +226,7 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
     gain.connect(masterGain);
 
     const now = ctx.currentTime;
-    gain.gain.linearRampToValueAtTime(0.045, now + 0.09);
+    gain.gain.linearRampToValueAtTime(0.085, now + 0.09);
     osc.start(now);
 
     drawOsc = osc;
@@ -238,7 +238,7 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
     const now = audioCtx.currentTime;
     const clamped = Math.max(0, Math.min(1, pullFraction));
     drawOsc.frequency.setTargetAtTime(170 + clamped * 130, now, 0.05);
-    drawGain.gain.setTargetAtTime(0.04 + clamped * 0.03, now, 0.05);
+    drawGain.gain.setTargetAtTime(0.075 + clamped * 0.055, now, 0.05);
   }
 
   function stopDrawSound(immediate) {
@@ -274,7 +274,7 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
     filter.frequency.value = 1300;
 
     const gain = ctx.createGain();
-    const peak = 0.08 + charge * 0.04;
+    const peak = 0.16 + charge * 0.07;
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(peak, now + 0.012);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
@@ -300,7 +300,7 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
     noiseFilter.Q.value = 0.6;
 
     const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.03, now);
+    noiseGain.gain.setValueAtTime(0.06, now);
     noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
 
     noise.connect(noiseFilter);
@@ -326,7 +326,7 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
 
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.04, now + 0.008);
+    gain.gain.linearRampToValueAtTime(0.08, now + 0.008);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
 
     osc.connect(filter);
@@ -358,7 +358,7 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
       filter.frequency.value = 5200;
 
       const gain = ctx.createGain();
-      const peak = i === 0 ? 0.05 : 0.055;
+      const peak = i === 0 ? 0.1 : 0.11;
       gain.gain.setValueAtTime(0, start);
       gain.gain.linearRampToValueAtTime(peak, start + 0.004);
       gain.gain.exponentialRampToValueAtTime(0.001, start + 0.16);
@@ -388,7 +388,7 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
     noiseFilter.Q.value = 1.1;
 
     const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.035, clinkStart);
+    noiseGain.gain.setValueAtTime(0.065, clinkStart);
     noiseGain.gain.exponentialRampToValueAtTime(0.001, clinkStart + 0.06);
 
     noise.connect(noiseFilter);
@@ -397,38 +397,68 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
     noise.start(clinkStart);
   }
 
-  // Round-ending cue. A bomb hit gets a soft, muffled low thud (a gentle
-  // "that's over" rather than a harsh buzzer); running out of time/arrows
-  // gets a warm three-note chime — rounded sine tones with a slow, staggered
-  // fade-in so it reads as a soothing "round complete" rather than an
-  // arcade fanfare.
-  function playEndGameSound(reason) {
+  // Explosive "blast" cue for a bomb hit — a sharp sub-bass thump plus a
+  // broadband noise crack that darkens into a rumble, timed to fire at the
+  // moment of impact (alongside the Lottie burst), not delayed until the
+  // round actually ends.
+  function playBombBlastSound() {
     const ctx = resumeAudioContext();
     if (!ctx) return;
     const now = ctx.currentTime;
 
-    if (reason === "bomb") {
-      const osc = ctx.createOscillator();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(150, now);
-      osc.frequency.exponentialRampToValueAtTime(48, now + 0.42);
+    // Sub-bass thump — the "punch" of the explosion.
+    const thump = ctx.createOscillator();
+    thump.type = "sine";
+    thump.frequency.setValueAtTime(150, now);
+    thump.frequency.exponentialRampToValueAtTime(60, now + 0.28);
 
-      const filter = ctx.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.value = 380;
+    const thumpGain = ctx.createGain();
+    thumpGain.gain.setValueAtTime(0, now);
+    thumpGain.gain.linearRampToValueAtTime(0.58, now + 0.012);
+    thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
 
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.11, now + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+    thump.connect(thumpGain);
+    thumpGain.connect(masterGain);
+    thump.start(now);
+    thump.stop(now + 0.6);
 
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(masterGain);
-      osc.start(now);
-      osc.stop(now + 0.65);
-      return;
+    // Broadband noise crack — sharp bright attack that darkens into rumble.
+    const noiseDuration = 0.7;
+    const bufferSize = Math.floor(ctx.sampleRate * noiseDuration);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
     }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = "lowpass";
+    noiseFilter.frequency.setValueAtTime(6000, now);
+    noiseFilter.frequency.exponentialRampToValueAtTime(120, now + noiseDuration);
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.52, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + noiseDuration);
+
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(masterGain);
+    noise.start(now);
+    noise.stop(now + noiseDuration);
+  }
+
+  // Round-ending cue for a non-bomb round end (time/arrows depleted) — a
+  // warm three-note chime with rounded sine tones and a slow, staggered
+  // fade-in so it reads as a soothing "round complete" rather than an
+  // arcade fanfare. (Bomb rounds already got their sonic closure from
+  // playBombBlastSound() at the moment of impact, so no separate cue here.)
+  function playEndGameSound(reason) {
+    if (reason === "bomb") return;
+    const ctx = resumeAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
 
     const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 — soft resolving major triad
     notes.forEach((freq, i) => {
@@ -443,7 +473,7 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
 
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.065, start + 0.04);
+      gain.gain.linearRampToValueAtTime(0.13, start + 0.04);
       gain.gain.exponentialRampToValueAtTime(0.001, start + 0.75);
 
       osc.connect(filter);
@@ -941,6 +971,7 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
       if (bestItem.dataset.bomb === "true") {
         bestItem.classList.add("is-bomb-hit");
         finishFiring();
+        playBombBlastSound();
 
         const bombRect = bestItem.getBoundingClientRect();
         const conveyorRect = conveyor.getBoundingClientRect();
