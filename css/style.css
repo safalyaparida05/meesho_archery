@@ -133,31 +133,22 @@ img {
 
 .logo {
   position: relative;
-  /* Layout footprint stays at the ORIGINAL size so the header row's height
-     (and everything below it) never shifts. The bigger look is applied purely
-     visually via transform below, which doesn't participate in layout/flow. */
-  width: clamp(96px, 30vw, 148px);
-  aspect-ratio: 83 / 47;
+  /* Sized directly to match the Figma reference (node 131:1467), where the
+     logo box is ~80x55.61 inside a 360-wide screen (~22% of screen width).
+     Unlike the old two-layer glow+text logo, this single flattened image
+     (logo-mark-new.webp, 912x636 ~= node 137:1763) fills its box edge to
+     edge with no transparent bleed margin, so it needs a smaller box to
+     read at the same visual size — no extra transform/zoom needed. */
+  width: clamp(72px, 22vw, 112px);
+  aspect-ratio: 912 / 636;
   flex: 0 0 auto;
-  transform: scale(1.83);
-  transform-origin: 50% 50%;
-}
-
-.logo__glow {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  transform: translateY(6%);
 }
 
 .logo__mark {
   position: absolute;
-  left: 8%;
-  top: 0;
-  width: 84%;
-  height: 88%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 
