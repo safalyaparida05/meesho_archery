@@ -70,13 +70,23 @@
 
 .conveyor {
   position: relative;
-  overflow: hidden;
+  /* No overflow clipping here at all — mixing overflow-x: hidden with
+     overflow-y: visible computes the "visible" axis to auto per the CSS
+     overflow spec, which still clips content, so the hit-burst effect
+     (sized larger than the conveyor row, see spawnHitBurst()/spawnBombBurst()
+     in js/game.js) was getting cut off anyway. The horizontal belt-scroll
+     clipping now lives on .conveyor__clip below instead. */
+  overflow: visible;
   /* No explicit fill — let the screen's own natural background show through
      instead of painting a separate color over it. */
   background: none;
   padding: clamp(8px, 1.8vh, 14px) 0;
   flex: 0 0 auto;
   z-index: 2;
+}
+
+.conveyor__clip {
+  overflow: hidden;
 }
 
 .conveyor__track {
@@ -233,6 +243,26 @@
 .score-popup.is-miss {
   color: rgba(255, 255, 255, 0.7);
   font-size: clamp(13px, 4vw, 16px);
+}
+
+/* Lottie burst played on every successful (non-bomb) hit, see
+   spawnHitBurst() in js/game.js. Sized larger than the item itself so the
+   burst visibly overshoots the object's edges rather than being clipped by
+   it, matching the source animation's own built-in padding. */
+.hit-burst {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* Browsers clip <svg> content to its viewBox by default (UA stylesheet sets
+   overflow: hidden on all svg elements). The bomb-hit explosion's shockwave
+   scales up past its own small native canvas (73x64) mid-animation, so
+   without this override its bottom/edges get cut off by the SVG itself —
+   not by any of our own container's overflow rules. */
+.hit-burst svg {
+  overflow: visible;
 }
 
 @keyframes popup-float {

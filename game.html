@@ -42,7 +42,9 @@
 
     <div class="game-body" id="game-body">
       <div class="conveyor" id="conveyor">
-        <div class="conveyor__track" id="conveyor-track"></div>
+        <div class="conveyor__clip">
+          <div class="conveyor__track" id="conveyor-track"></div>
+        </div>
       </div>
 
       <div class="arena" id="arena">
@@ -95,6 +97,10 @@
     </div>
   </main>
 
+  <!-- Hit-burst effect (see js/game.js resolveShot()) is a Lottie animation;
+       lottie-web renders the plain JSON extracted from the .lottie file the
+       user supplied (assets/lottie/hit-burst.json), no bundler needed. -->
+  <script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js"></script>
   <script type="module" src="js/game.js"></script>
 </body>
 </html>

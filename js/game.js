@@ -336,6 +336,67 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
     osc.stop(now + 0.13);
   }
 
+  // Classic arcade "coin pickup" cue for a successful hit — a crisp two-note
+  // arpeggio at FIXED pitches (no frequency glide inside each note, which is
+  // what made an earlier version sound like a whistle/slide instead of a
+  // coin) plus a very short metallic noise "clink" layered under the first
+  // note for texture. Timed to land with the coin-burst Lottie effect.
+  function playCoinSplashSound() {
+    const ctx = resumeAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const notes = [988, 1568]; // B5, G6 — classic bright coin-pickup interval
+
+    notes.forEach((freq, i) => {
+      const start = now + i * 0.075;
+      const osc = ctx.createOscillator();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(freq, start); // fixed pitch, no glide
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 5200;
+
+      const gain = ctx.createGain();
+      const peak = i === 0 ? 0.05 : 0.055;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(peak, start + 0.004);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.16);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      osc.start(start);
+      osc.stop(start + 0.18);
+    });
+
+    // Metallic "clink" — a brief burst of bandpass-filtered noise, giving the
+    // arpeggio some coin-on-coin texture instead of a bare pure tone.
+    const clinkStart = now;
+    const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * 0.06));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = "bandpass";
+    noiseFilter.frequency.value = 4500;
+    noiseFilter.Q.value = 1.1;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.035, clinkStart);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, clinkStart + 0.06);
+
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(masterGain);
+    noise.start(clinkStart);
+  }
+
   // Round-ending cue. A bomb hit gets a soft, muffled low thud (a gentle
   // "that's over" rather than a harsh buzzer); running out of time/arrows
   // gets a warm three-note chime — rounded sine tones with a slow, staggered
@@ -614,6 +675,72 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
     setTimeout(() => popup.remove(), 750);
   }
 
+  // Burst effect played on every successful (non-bomb) hit, centered on the
+  // object that got hit. `size` is derived from the hit item's own width so
+  // the burst scales with the responsive conveyor item size instead of
+  // being a fixed pixel value.
+  const HIT_BURST_SRC = "assets/lottie/hit-burst.json";
+
+  function spawnHitBurst(x, y, size) {
+    if (typeof lottie === "undefined") return; // lottie-web CDN script failed to load — skip, don't break the hit
+    const el = document.createElement("div");
+    el.className = "hit-burst";
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.width = `${size}px`;
+    el.style.height = `${size}px`;
+    // Appended to `conveyor` (the stationary strip the hit item actually
+    // lives in), not `arena` — the item itself sits above the arena
+    // visually, so positioning this against arena's box would place it
+    // off-screen / clipped by arena's own overflow:hidden.
+    conveyor.appendChild(el);
+
+    const anim = lottie.loadAnimation({
+      container: el,
+      renderer: "svg",
+      loop: false,
+      autoplay: true,
+      path: HIT_BURST_SRC,
+    });
+    anim.addEventListener("complete", () => {
+      anim.destroy();
+      el.remove();
+    });
+  }
+
+  // Explosion effect played once on a bomb hit, centered on the bomb, before
+  // the end-game overlay appears. `onComplete` is the game-over transition —
+  // it's deferred until the animation finishes so the player actually sees
+  // the explosion instead of it being instantly covered by the overlay.
+  const BOMB_BURST_SRC = "assets/lottie/bomb-hit.json";
+
+  function spawnBombBurst(x, y, size, onComplete) {
+    if (typeof lottie === "undefined") {
+      onComplete(); // lottie-web CDN script failed to load — skip straight to game over
+      return;
+    }
+    const el = document.createElement("div");
+    el.className = "hit-burst";
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.width = `${size}px`;
+    el.style.height = `${size}px`;
+    conveyor.appendChild(el);
+
+    const anim = lottie.loadAnimation({
+      container: el,
+      renderer: "svg",
+      loop: false,
+      autoplay: true,
+      path: BOMB_BURST_SRC,
+    });
+    anim.addEventListener("complete", () => {
+      anim.destroy();
+      el.remove();
+      onComplete();
+    });
+  }
+
   /* ---------- First-time draw hint ---------- */
 
   function dismissDrawHint() {
@@ -813,9 +940,16 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
       bestItem.dataset.hit = "true";
       if (bestItem.dataset.bomb === "true") {
         bestItem.classList.add("is-bomb-hit");
-        spawnScorePopup(laneX - arenaRect.left, laneY - arenaRect.top, "BOOM", false);
         finishFiring();
-        endGame("bomb", "You hit a bomb!");
+
+        const bombRect = bestItem.getBoundingClientRect();
+        const conveyorRect = conveyor.getBoundingClientRect();
+        spawnBombBurst(
+          bombRect.left + bombRect.width / 2 - conveyorRect.left,
+          bombRect.top + bombRect.height / 2 - conveyorRect.top,
+          bombRect.width * 3.2,
+          () => endGame("bomb", "You hit a bomb!")
+        );
         return;
       }
       // Dead-center (on the sweet-spot target dot) scores full points; still
@@ -830,6 +964,15 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
       score += points;
       updateScoreDisplay();
       spawnScorePopup(laneX - arenaRect.left, laneY - arenaRect.top, `+${points}`, false);
+
+      const itemRect = bestItem.getBoundingClientRect();
+      const conveyorRect = conveyor.getBoundingClientRect();
+      spawnHitBurst(
+        itemRect.left + itemRect.width / 2 - conveyorRect.left,
+        itemRect.top + itemRect.height / 2 - conveyorRect.top,
+        itemRect.width * 3.2
+      );
+      playCoinSplashSound();
     } else {
       spawnScorePopup(laneX - arenaRect.left, laneY - arenaRect.top, "Miss", true);
     }
