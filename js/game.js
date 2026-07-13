@@ -1052,22 +1052,24 @@ import { hasPlaysLeftToday, consumePlay, renderPlaysGate, getIstDateString, MAX_
     localStorage.setItem(LIFETIME_SCORE_KEY, String(lifetimeScore));
     localStorage.setItem(LIFETIME_TIME_KEY, String(lifetimeTime));
 
-    // Only push to Firestore once the player has actually saved a
-    // leaderboard profile (i.e. they have a doc there to increment) —
-    // otherwise this is silently skipped and the totals just live locally
-    // until they do.
-    if (localStorage.getItem(PROFILE_KEY)) {
-      incrementPlayerStats(score, elapsedSeconds).catch(() => {});
-      const profile = getStoredProfile();
-      recordDailyRound({
-        istDate: getIstDateString(),
-        score,
-        timeSeconds: elapsedSeconds,
-        name: profile && profile.name,
-        gender: profile && profile.gender,
-        avatar: profile && profile.avatar,
-      }).catch(() => {});
-    }
+    // Push to Firestore for EVERY round, whether or not a profile exists
+    // yet — a round played before the player has saved a name still gets
+    // its score/time synced (under a placeholder identity), it just stays
+    // hidden from the public leaderboard until a profile is saved (see
+    // hasProfile in js/firebase-init.js). That's what makes today's best
+    // score already correct and visible the instant the profile is saved,
+    // instead of waiting on one more round played afterward.
+    const profile = getStoredProfile();
+    incrementPlayerStats(score, elapsedSeconds, profile).catch(() => {});
+    recordDailyRound({
+      istDate: getIstDateString(),
+      score,
+      timeSeconds: elapsedSeconds,
+      name: profile && profile.name,
+      gender: profile && profile.gender,
+      avatar: profile && profile.avatar,
+      hasProfile: !!profile,
+    }).catch(() => {});
 
     const config = END_SCREENS[finalReason] || END_SCREENS[reason] || END_SCREENS.timer;
 

@@ -17,15 +17,29 @@ rules_version = '2';
 //
 // Two legitimate write shapes come from js/firebase-init.js:
 //   1. saveProfileAndSync() — either creates the doc the first time (name,
-//      gender, avatar, score, time, createdAt, updatedAt), or on later
-//      visits updates ONLY name/gender/avatar/updatedAt, leaving score/time
-//      untouched.
-//   2. incrementPlayerStats() — updates ONLY score/time/updatedAt via
-//      increment(), once per finished round. A single round is capped at
-//      10 arrows x 10 points = 100 points, and the round timer is a fixed
-//      60s (see js/game.js: POINTS_PER_HIT, TOTAL_ARROWS, GAME_DURATION) —
-//      so a single increment can never legitimately raise score by more
-//      than 100 or time by more than 60.
+//      gender, avatar, score, time, hasProfile, createdAt, updatedAt), or on
+//      later visits updates ONLY name/gender/avatar/hasProfile/updatedAt,
+//      leaving score/time untouched.
+//   2. incrementPlayerStats() — called after EVERY round now, whether or not
+//      a profile exists yet. If the doc already exists this updates ONLY
+//      score/time/updatedAt via increment(); if this is the device's very
+//      first synced round ever, it creates the doc directly (same shape as
+//      saveProfileAndSync's create, just under a placeholder identity with
+//      hasProfile: false if no profile is saved yet). A single round is
+//      capped at 10 arrows x 10 points = 100 points, and the round timer is
+//      a fixed 60s (see js/game.js: POINTS_PER_HIT, TOTAL_ARROWS,
+//      GAME_DURATION) — so a single increment can never legitimately raise
+//      score by more than 100 or time by more than 60.
+//
+// hasProfile: bool — true once the device has saved a real name via
+// saveProfileAndSync(), false for a round synced before that under the
+// "Player" placeholder identity. js/firebase-init.js's fetchLeaderboard()
+// filters out hasProfile === false rows, so a player is only ever visible
+// on the public leaderboard once they've actually claimed a name — the
+// score/time earned before that point is preserved, not lost, it's just
+// held privately until then. Docs from before this field existed have no
+// hasProfile key at all; that's treated as visible (true), so no existing
+// player's row disappears.
 //
 // ---------------------------------------------------------------------------
 // Collection 2: /dailyLeaderboard/{istDate}/players/{playerId} — DAILY best
@@ -35,10 +49,11 @@ rules_version = '2';
 // playerId can be validated straight off the path instead of parsed back out
 // of a string.
 //
-// The one write shape comes from recordDailyRound() in js/firebase-init.js,
-// called once per finished round once a profile exists:
+// The main write shape comes from recordDailyRound() in js/firebase-init.js,
+// called once per finished round now regardless of whether a profile exists:
 //   - Creates the day's doc on the player's first play of that IST day
-//     (bestScore/bestTime = that round's values, playsUsed = 1).
+//     (bestScore/bestTime = that round's values, playsUsed = 1, hasProfile
+//     reflects whether a profile existed at that moment).
 //   - Otherwise updates it: bestScore/bestTime only move if this round beat
 //     the existing best (higher score, or same score with a faster time —
 //     the same rule used to rank the tab itself), and playsUsed always goes
@@ -46,6 +61,13 @@ rules_version = '2';
 //     and is capped at MAX_PLAYS_PER_DAY() below, this is what actually
 //     enforces the daily play limit at the database level, not just in the
 //     app.
+//
+// A second, narrower write shape comes from saveProfileAndSync()'s
+// syncProfileToToday() step: the moment a profile is saved, if today's doc
+// already exists (rounds played earlier today before the name was chosen),
+// it's relabeled with the real name/gender/avatar and hasProfile flips to
+// true — WITHOUT touching bestScore/bestTime/playsUsed, so claiming a name
+// never counts as an extra play or changes the score already earned.
 //
 // KNOWN LIMITATION: istDate is whatever string the client sends — these
 // rules check it's a plausible YYYY-MM-DD, but nothing here cryptographically
@@ -87,7 +109,8 @@ service cloud.firestore {
       allow create: if isValidIstDate(istDate) && isValidDailyCreate(request.resource.data);
 
       allow update: if isValidIstDate(istDate)
-                    && isValidDailyUpdate(request.resource.data, resource.data);
+                    && (isValidDailyUpdate(request.resource.data, resource.data)
+                        || isValidDailyProfileSync(request.resource.data, resource.data));
 
       allow delete: if false;
     }
@@ -112,7 +135,7 @@ function isValidIstDate(istDate) {
 /* ---------- /players (lifetime) ---------- */
 
 function isValidNewPlayer(data) {
-  return data.keys().hasOnly(['name', 'gender', 'avatar', 'score', 'time', 'createdAt', 'updatedAt'])
+  return data.keys().hasOnly(['name', 'gender', 'avatar', 'score', 'time', 'hasProfile', 'createdAt', 'updatedAt'])
     && data.name is string
     && data.name.size() > 0
     && data.name.size() <= 24
@@ -129,6 +152,7 @@ function isValidNewPlayer(data) {
     && data.time is number
     && data.time >= 0
     && data.time <= 100000
+    && data.hasProfile is bool
     && data.createdAt == request.time
     && data.updatedAt == request.time;
 }
@@ -141,7 +165,7 @@ function isValidProfileUpdate(newData, oldData) {
   // player's doc out of ANY future update (the bug behind a real player's
   // lifetime total silently freezing). Healthy docs are unaffected since
   // get() returns the real stored value whenever the key is present.
-  return newData.diff(oldData).affectedKeys().hasOnly(['name', 'gender', 'avatar', 'updatedAt'])
+  return newData.diff(oldData).affectedKeys().hasOnly(['name', 'gender', 'avatar', 'hasProfile', 'updatedAt'])
     && newData.name is string
     && newData.name.size() > 0
     && newData.name.size() <= 24
@@ -150,6 +174,10 @@ function isValidProfileUpdate(newData, oldData) {
     && newData.avatar.matches('^assets/images/leaderboard/avatar-(male|female|neutral)-[0-9]+\\.png$')
     && newData.score == oldData.get('score', 0)
     && newData.time == oldData.get('time', 0)
+    // This write shape is specifically saveProfileAndSync() saving a real
+    // name — it only ever means "the player now has a profile", never the
+    // reverse.
+    && newData.hasProfile == true
     && newData.createdAt == oldData.createdAt
     && newData.updatedAt == request.time;
 }
@@ -173,7 +201,7 @@ function isValidStatsIncrement(newData, oldData) {
 /* ---------- /dailyLeaderboard/{istDate}/players (daily) ---------- */
 
 function isValidDailyCreate(data) {
-  return data.keys().hasOnly(['name', 'gender', 'avatar', 'bestScore', 'bestTime', 'playsUsed', 'createdAt', 'updatedAt'])
+  return data.keys().hasOnly(['name', 'gender', 'avatar', 'bestScore', 'bestTime', 'playsUsed', 'hasProfile', 'createdAt', 'updatedAt'])
     && data.name is string
     && data.name.size() > 0
     && data.name.size() <= 24
@@ -192,12 +220,13 @@ function isValidDailyCreate(data) {
     && data.bestTime <= 60
     // The doc's creation IS this player's first play of the day.
     && data.playsUsed == 1
+    && data.hasProfile is bool
     && data.createdAt == request.time
     && data.updatedAt == request.time;
 }
 
 function isValidDailyUpdate(newData, oldData) {
-  return newData.diff(oldData).affectedKeys().hasOnly(['name', 'gender', 'avatar', 'bestScore', 'bestTime', 'playsUsed', 'updatedAt'])
+  return newData.diff(oldData).affectedKeys().hasOnly(['name', 'gender', 'avatar', 'bestScore', 'bestTime', 'playsUsed', 'hasProfile', 'updatedAt'])
     && newData.name is string
     && newData.name.size() > 0
     && newData.name.size() <= 24
@@ -224,5 +253,34 @@ function isValidDailyUpdate(newData, oldData) {
     // count past the shared cap.
     && newData.playsUsed == oldData.playsUsed + 1
     && newData.playsUsed <= MAX_PLAYS_PER_DAY()
+    // hasProfile can only ever flip false -> true here (a round played after
+    // the profile was created catching the flag up), never true -> false.
+    // Missing on the old doc (every daily doc from before this field
+    // existed) counts as already-true, so no existing real player's row can
+    // accidentally get hidden by a later round update.
+    && newData.hasProfile is bool
+    && (oldData.get('hasProfile', true) != true || newData.hasProfile == true)
+    && newData.updatedAt == request.time;
+}
+
+// The narrow write shape from saveProfileAndSync()'s syncProfileToToday():
+// claiming a name relabels today's already-recorded entry (real name/
+// gender/avatar, hasProfile -> true) WITHOUT counting as a play or moving
+// the score — bestScore/bestTime/playsUsed must be byte-for-byte unchanged.
+// oldData.get(key, default) throughout for the same reason as
+// isValidProfileUpdate above: never throw a malformed/legacy doc into a
+// permanent write-lock over a merely-missing field.
+function isValidDailyProfileSync(newData, oldData) {
+  return newData.diff(oldData).affectedKeys().hasOnly(['name', 'gender', 'avatar', 'hasProfile', 'updatedAt'])
+    && newData.name is string
+    && newData.name.size() > 0
+    && newData.name.size() <= 24
+    && newData.gender in ['male', 'female', 'unspecified']
+    && newData.avatar is string
+    && newData.avatar.matches('^assets/images/leaderboard/avatar-(male|female|neutral)-[0-9]+\\.png$')
+    && newData.hasProfile == true
+    && newData.bestScore == oldData.get('bestScore', 0)
+    && newData.bestTime == oldData.get('bestTime', 0)
+    && newData.playsUsed == oldData.get('playsUsed', 0)
     && newData.updatedAt == request.time;
 }

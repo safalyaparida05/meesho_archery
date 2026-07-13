@@ -25,7 +25,7 @@ import {
   serverTimestamp,
   runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
-import { MAX_PLAYS_PER_DAY } from "./plays.js";
+import { MAX_PLAYS_PER_DAY, getIstDateString } from "./plays.js";
 
 // Re-exported so callers that already import from firebase-init.js (the
 // leaderboard/daily-write surface) don't also need a separate import of
@@ -59,6 +59,12 @@ const PLAYER_ID_KEY = "meeshoArcheryPlayerId";
 // starts at this generous ceiling (matches the existing cap used elsewhere
 // in firestore.rules) rather than a real elapsed time.
 const NO_BEST_TIME_YET = 100000;
+// Identity used for a round played before the device has ever saved a
+// leaderboard profile — see the "sync every round, show only once a real
+// profile exists" note above saveProfileAndSync().
+const PLACEHOLDER_NAME = "Player";
+const PLACEHOLDER_GENDER = "unspecified";
+const PLACEHOLDER_AVATAR = "assets/images/leaderboard/avatar-neutral-1.png";
 
 /**
  * Every device gets a stable random player id the first time it's needed,
@@ -83,6 +89,14 @@ export function getOrCreatePlayerId() {
  * taps Save. `profile` is { name, gender, avatar, score, time }; score/time
  * are the lifetime totals already accumulated locally so the very first
  * sync doesn't start the player back at zero.
+ *
+ * Rounds played before a profile exists already synced their score/time
+ * under a placeholder identity (see incrementPlayerStats/recordDailyRound
+ * below) but stayed hidden from the leaderboard (hasProfile: false). This
+ * is the moment that flips hasProfile to true — for the /players doc
+ * directly, and for today's daily-leaderboard entry via
+ * syncProfileToToday() — so real score/time already earned becomes visible
+ * immediately, correctly labeled, with no extra "play" consumed.
  */
 export async function saveProfileAndSync(profile) {
   const playerId = getOrCreatePlayerId();
@@ -94,6 +108,7 @@ export async function saveProfileAndSync(profile) {
       name: profile.name,
       gender: profile.gender,
       avatar: profile.avatar,
+      hasProfile: true,
       updatedAt: serverTimestamp(),
     });
   } else {
@@ -103,24 +118,71 @@ export async function saveProfileAndSync(profile) {
       avatar: profile.avatar,
       score: profile.score || 0,
       time: profile.time || 0,
+      hasProfile: true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
   }
 
+  await syncProfileToToday(profile).catch((err) => {
+    console.warn("[meesho-archery] syncProfileToToday skipped:", err && err.message);
+  });
+
   return playerId;
 }
 
 /**
- * Adds this round's score/time onto the player's Firestore totals. Only
- * meaningful once a profile has been saved (i.e. the player has a Firestore
- * doc) — callers should check for a saved local profile before calling this,
- * and it fails soft (logs + resolves) if the doc doesn't exist yet.
+ * Relabels today's daily-leaderboard entry (if one already exists from
+ * rounds played before this profile was saved) with the real name/gender/
+ * avatar and flips hasProfile to true — without touching bestScore/
+ * bestTime/playsUsed. No-op if the player hasn't played today yet (nothing
+ * to relabel).
  */
-export async function incrementPlayerStats(roundScore, roundTimeSeconds) {
+async function syncProfileToToday(profile) {
+  const playerId = getOrCreatePlayerId();
+  const istDate = getIstDateString();
+  const ref = doc(db, DAILY_COLLECTION, istDate, DAILY_SUBCOLLECTION, playerId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+
+  await updateDoc(ref, {
+    name: profile.name,
+    gender: profile.gender,
+    avatar: profile.avatar,
+    hasProfile: true,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Adds this round's score/time onto the player's Firestore totals — called
+ * after EVERY finished round, whether or not a profile has been saved yet.
+ * `profile` is the caller's current local profile (or null/undefined if
+ * none exists yet). If this is the very first round ever synced for this
+ * device, the doc doesn't exist yet: it's created directly with this
+ * round's score/time as the starting totals, under a placeholder identity
+ * (hasProfile: false) if no profile is saved, so the round's result is
+ * never silently dropped while the player is still anonymous. Later rounds
+ * just increment as before. Fails soft (logs + resolves) on error.
+ */
+export async function incrementPlayerStats(roundScore, roundTimeSeconds, profile) {
   const playerId = getOrCreatePlayerId();
   const ref = doc(db, PLAYERS_COLLECTION, playerId);
   try {
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        name: (profile && profile.name) || PLACEHOLDER_NAME,
+        gender: (profile && profile.gender) || PLACEHOLDER_GENDER,
+        avatar: (profile && profile.avatar) || PLACEHOLDER_AVATAR,
+        score: roundScore,
+        time: roundTimeSeconds,
+        hasProfile: !!profile,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      return;
+    }
     await updateDoc(ref, {
       score: increment(roundScore),
       time: increment(roundTimeSeconds),
@@ -160,12 +222,20 @@ export async function isNameTaken(name, excludePlayerId) {
 /**
  * Fetches every player and sorts by the ranking rule the user specified:
  * highest lifetime score first, then lowest lifetime time as the tiebreak.
+ *
+ * Rows with hasProfile explicitly false are skipped — those are rounds
+ * synced under a placeholder identity before the device ever saved a real
+ * profile, kept out of public view until the player actually claims a name.
+ * A MISSING hasProfile field (every doc from before this feature existed)
+ * is treated as visible, so no existing player's row disappears.
  */
 export async function fetchLeaderboard() {
   const snap = await getDocs(collection(db, PLAYERS_COLLECTION));
   const players = [];
   snap.forEach((docSnap) => {
-    players.push({ id: docSnap.id, ...docSnap.data() });
+    const data = docSnap.data();
+    if (data.hasProfile === false) return;
+    players.push({ id: docSnap.id, ...data });
   });
 
   players.sort((a, b) => {
@@ -196,10 +266,13 @@ export async function fetchLeaderboard() {
  *
  * `profile` is optional {name, gender, avatar} — passed so the daily doc has
  * enough info to render a row without a second lookup into /players; omitted
- * (or partial) if the player hasn't saved a profile yet, though callers
- * should generally only invoke this once a profile exists.
+ * (or partial) if the player hasn't saved a profile yet. Called after EVERY
+ * round now (not just once a profile exists) — `hasProfile` records whether
+ * a real profile was attached at write time, so the row stays hidden (see
+ * fetchDailyLeaderboard) until saveProfileAndSync()'s syncProfileToToday()
+ * flips it to true, or a later round played post-profile does the same.
  */
-export async function recordDailyRound({ istDate, score, timeSeconds, name, gender, avatar }) {
+export async function recordDailyRound({ istDate, score, timeSeconds, name, gender, avatar, hasProfile }) {
   const playerId = getOrCreatePlayerId();
   const ref = doc(db, DAILY_COLLECTION, istDate, DAILY_SUBCOLLECTION, playerId);
   try {
@@ -207,12 +280,13 @@ export async function recordDailyRound({ istDate, score, timeSeconds, name, gend
       const snap = await tx.get(ref);
       if (!snap.exists()) {
         tx.set(ref, {
-          name: name || "Player",
-          gender: gender || "unspecified",
-          avatar: avatar || "",
+          name: name || PLACEHOLDER_NAME,
+          gender: gender || PLACEHOLDER_GENDER,
+          avatar: avatar || PLACEHOLDER_AVATAR,
           bestScore: score,
           bestTime: timeSeconds,
           playsUsed: 1,
+          hasProfile: !!hasProfile,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
@@ -233,6 +307,7 @@ export async function recordDailyRound({ istDate, score, timeSeconds, name, gend
         bestScore: beatsBest ? score : currentBestScore,
         bestTime: beatsBest ? timeSeconds : currentBestTime,
         playsUsed: Math.min(MAX_PLAYS_PER_DAY, currentPlaysUsed + 1),
+        hasProfile: !!hasProfile || data.hasProfile === true,
         updatedAt: serverTimestamp(),
       });
     });
@@ -245,12 +320,17 @@ export async function recordDailyRound({ istDate, score, timeSeconds, name, gend
  * Fetches every player's row for one IST date and sorts by the same rule as
  * the daily tab: highest bestScore that day first, then fastest bestTime
  * that day as the tiebreak.
+ *
+ * Same hasProfile visibility rule as fetchLeaderboard(): explicit false
+ * stays hidden, missing/true shows.
  */
 export async function fetchDailyLeaderboard(istDate) {
   const snap = await getDocs(collection(db, DAILY_COLLECTION, istDate, DAILY_SUBCOLLECTION));
   const players = [];
   snap.forEach((docSnap) => {
-    players.push({ id: docSnap.id, ...docSnap.data() });
+    const data = docSnap.data();
+    if (data.hasProfile === false) return;
+    players.push({ id: docSnap.id, ...data });
   });
 
   players.sort((a, b) => {
